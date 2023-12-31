@@ -50,7 +50,9 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
 	//fmt.Fprint(w, page)
+
 	http.ServeFile(w, r, "index.html")
+	//http.ServeContent(w, r, )
 	jsondb.ReadJSON(filename, &entries)
 	fmt.Fprint(w, &entries)
 
