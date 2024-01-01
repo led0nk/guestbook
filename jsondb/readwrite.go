@@ -19,3 +19,12 @@ func ReadJSON(filename string, entries *[]GuestbookEntry) {
 	f, _ := os.ReadFile(filename)
 	json.Unmarshal(f, &entries)
 }
+
+func (entry *GuestbookEntry) CreateID() (id int) {
+	//entries.Lock()
+	//defer entries.Unlock()
+
+	id = entry.CreateID()
+	entry.ID++
+	return
+}

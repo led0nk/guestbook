@@ -1,12 +1,30 @@
-<html>
+<html lang="en">
 <body>
-<p>Hello, please insert greetings</p>
-	<form action="/submit" method="post">
+<p align="center">Hello, please insert greetings</p>
+	<form action="/submit" method="post" style="margin: auto;width: 220px">
 		<label for="name">Name:</label><br>
 		<input type="text" id="name" name="name"><br>
 		<label for="message">Message:</label><br>
-		<input type="text" id="message" name="message">
+		<input type="text" id="message" name="message"><br>
 		<input type="submit" value="Submit">
-	  </form> 
+	</form> 
+	{{range .}}
+	<table>
+		<tr>
+			<th>ID:</th>
+			<td>{{ .ID }}</td>
+	
+		</tr>
+		<tr>
+			<th>Name:</th>
+			<td>{{ .Name }}</td>
+
+		</tr>
+		<tr>
+			<th>Message:</th>
+			<td>{{ .Message }}</td>
+		</tr>
+	</table>
+	{{end}}
 </body>
 </html>

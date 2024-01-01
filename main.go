@@ -10,6 +10,7 @@ import (
 )
 
 var filename string = "./jsondb/entries.json"
+var tmplt *template.Template
 
 var entries = []jsondb.GuestbookEntry{
 	{
@@ -49,12 +50,16 @@ func main() {
 func handlePage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
-	//fmt.Fprint(w, page)
 
-	http.ServeFile(w, r, "index.html")
-	//http.ServeContent(w, r, )
 	jsondb.ReadJSON(filename, &entries)
-	fmt.Fprint(w, &entries)
+	tmplt, _ = template.ParseFiles("index.html")
+
+	err := tmplt.Execute(w, &entries)
+	//fmt.Fprint(w, &entries)
+	if err != nil {
+		fmt.Println("error when executing template", err)
+		return
+	}
 
 }
 
@@ -67,10 +72,13 @@ func submit(w http.ResponseWriter, r *http.Request) {
 		t.Execute(w, nil)
 	} else {
 		r.ParseForm()
+		//function call somehow wrong for creating ID from newEntry in slice
+		//idvar := jsondb.CreateID(&entries)
 		newEntry = jsondb.GuestbookEntry{ID: 1, Name: r.FormValue("name"), Message: r.FormValue("message")}
 		entries = append(entries, newEntry)
 		fmt.Print(entries)
 		jsondb.WriteJSON(filename, &entries)
 	}
+	http.Redirect(w, r, r.Header.Get("/"), 302)
 
 }
