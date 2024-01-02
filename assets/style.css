@@ -1,0 +1,30 @@
+@charset "utf-8";
+body {
+    background-color: #eee1c6;
+}
+form {
+    margin: auto;
+    height: 150px;
+    width: 220px;
+    box-sizing: border-box;
+}
+
+input[type=text]{
+    background-color: #653818;
+    color: white;
+    border: none;
+    resize: both;
+    height: auto;
+    width: auto;
+}
+
+
+input[type=button], input[type=submit], input[type=reset]{
+    background-color: #653818;
+    border: none;
+    color: white;
+    padding: 16px 32px;
+    text-decoration: none;
+    margin: 4px 2px;
+    cursor: pointer;
+}

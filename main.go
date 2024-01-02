@@ -37,6 +37,7 @@ func main() {
 
 	m.HandleFunc("/", handlePage)
 	m.HandleFunc("/submit", submit)
+	m.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 
 	srv := http.Server{
 		Handler:      m,
