@@ -9,6 +9,7 @@
 		<input type="submit" value="Submit">
 	</form> 
 	{{range .}}
+	<br>
 	<table>
 		<tr>
 			<th>ID:</th>
@@ -24,7 +25,12 @@
 			<th>Message:</th>
 			<td>{{ .Message }}</td>
 		</tr>
+		<tr>
+			<th>Timestamp:</th>
+			<td>{{ .CreatedAt }}</td>
+		</tr>
 	</table>
+	<br>
 	{{end}}
 </body>
 </html>

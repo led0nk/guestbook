@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"text/template"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var filename string = "./jsondb/entries.json"
@@ -14,15 +16,16 @@ var tmplt *template.Template
 
 var entries = []jsondb.GuestbookEntry{
 	{
-		ID:      1,
+		ID:      uuid.New(),
 		Name:    "Hans Peter",
-		Message: "pipapo"},
+		Message: "pipapo",
+	},
 	{
-		ID:      2,
+		ID:      uuid.New(),
 		Name:    "Peter Peter",
 		Message: "pepepo"},
 	{
-		ID:      3,
+		ID:      uuid.New(),
 		Name:    "Hansebanger",
 		Message: "bangbangpo"},
 }
@@ -43,6 +46,7 @@ func main() {
 	}
 
 	fmt.Println("server started on port", addr)
+	fmt.Println(time.Now())
 	err := srv.ListenAndServe()
 	log.Fatal(err)
 }
@@ -72,9 +76,8 @@ func submit(w http.ResponseWriter, r *http.Request) {
 		t.Execute(w, nil)
 	} else {
 		r.ParseForm()
-		//function call somehow wrong for creating ID from newEntry in slice
-		//idvar := jsondb.CreateID(&entries)
-		newEntry = jsondb.GuestbookEntry{ID: 1, Name: r.FormValue("name"), Message: r.FormValue("message")}
+		now := time.Now().Format(time.RFC850)
+		newEntry = jsondb.GuestbookEntry{ID: uuid.New(), Name: r.FormValue("name"), Message: r.FormValue("message"), CreatedAt: now}
 		entries = append(entries, newEntry)
 		fmt.Print(entries)
 		jsondb.WriteJSON(filename, &entries)

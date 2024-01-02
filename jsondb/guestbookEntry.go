@@ -1,7 +1,12 @@
 package jsondb
 
+import (
+	"github.com/google/uuid"
+)
+
 type GuestbookEntry struct {
-	ID      int    `json:"id"`
-	Name    string `json:"name"`
-	Message string `json:"message"`
+	ID        uuid.UUID `json:"id" form:"-"`
+	Name      string    `json:"name"`
+	Message   string    `json:"message"`
+	CreatedAt string    `json:"created_at"`
 }
