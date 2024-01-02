@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/led0nk/guestbook/db/jsondb"
+	"guestbook/db/jsondb"
 
 	"net/http"
 	"text/template"
@@ -47,7 +47,7 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
 
-	jsondb.ReadJSON(dbcon, &entries)
+	//jsondb.ReadJSON(dbcon, &entries)
 	tmplt, _ = template.ParseFiles("index.html")
 
 	err := tmplt.Execute(w, &entries)
@@ -72,7 +72,7 @@ func submit(w http.ResponseWriter, r *http.Request) {
 		newEntry = jsondb.GuestbookEntry{ID: uuid.New(), Name: r.FormValue("name"), Message: r.FormValue("message"), CreatedAt: now}
 		entries = append(entries, newEntry)
 		fmt.Print(entries)
-		jsondb.WriteJSON(dbcon, &entries)
+		//jsondb.WriteJSON(dbcon, &entries)
 	}
 	http.Redirect(w, r, r.Header.Get("/"), 302)
 
