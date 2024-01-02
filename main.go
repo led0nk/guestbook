@@ -1,9 +1,12 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"guestbook/jsondb"
 	"log"
+
+	"github.com/led0nk/guestbook/db/jsondb"
+
 	"net/http"
 	"text/template"
 	"time"
@@ -11,37 +14,25 @@ import (
 	"github.com/google/uuid"
 )
 
-var filename string = "./jsondb/entries.json"
+// var filename string = "./jsondb/entries.json"
 var tmplt *template.Template
-
-var entries = []jsondb.GuestbookEntry{
-	{
-		ID:      uuid.New(),
-		Name:    "Hans Peter",
-		Message: "pipapo",
-	},
-	{
-		ID:      uuid.New(),
-		Name:    "Peter Peter",
-		Message: "pepepo"},
-	{
-		ID:      uuid.New(),
-		Name:    "Hansebanger",
-		Message: "bangbangpo"},
-}
+var dbcon = flag.String("dbcon", "./jsondb/entries.json", "location of database")
+var entries = []jsondb.GuestbookEntry{}
 
 func main() {
 	m := http.NewServeMux()
 
-	const addr = ":8080"
-
+	var (
+		addr = flag.String("addr", ":8080", "default server port")
+	)
+	flag.Parse()
 	m.HandleFunc("/", handlePage)
 	m.HandleFunc("/submit", submit)
 	m.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 
 	srv := http.Server{
 		Handler:      m,
-		Addr:         addr,
+		Addr:         *addr,
 		WriteTimeout: 30 * time.Second,
 		ReadTimeout:  30 * time.Second,
 	}
@@ -56,7 +47,7 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
 
-	jsondb.ReadJSON(filename, &entries)
+	jsondb.ReadJSON(dbcon, &entries)
 	tmplt, _ = template.ParseFiles("index.html")
 
 	err := tmplt.Execute(w, &entries)
@@ -81,7 +72,7 @@ func submit(w http.ResponseWriter, r *http.Request) {
 		newEntry = jsondb.GuestbookEntry{ID: uuid.New(), Name: r.FormValue("name"), Message: r.FormValue("message"), CreatedAt: now}
 		entries = append(entries, newEntry)
 		fmt.Print(entries)
-		jsondb.WriteJSON(filename, &entries)
+		jsondb.WriteJSON(dbcon, &entries)
 	}
 	http.Redirect(w, r, r.Header.Get("/"), 302)
 
