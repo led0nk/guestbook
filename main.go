@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"guestbook/db/jsondb"
-
+	"guestbook/model"
 	"net/http"
 	"text/template"
 	"time"
@@ -27,14 +27,9 @@ func main() {
 	//placeholder
 	bookStorage, _ := jsondb.CreateBookStorage("./entries.json")
 
-	//	newEntry := model.GuestbookEntry{Name: "Peter Müller", Message: "Message"}
-	//	bookStorage.CreateEntry(&newEntry)
-	entries, _ := bookStorage.ListEntries()
-	fmt.Println("list of entries:", entries)
-
 	//placeholder
-	m.HandleFunc("/", handlePage)
-	m.HandleFunc("/submit", submit)
+	m.HandleFunc("/", handlePage(bookStorage))
+	m.HandleFunc("/submit", submit(bookStorage))
 	m.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 
 	srv := http.Server{
@@ -50,36 +45,37 @@ func main() {
 	log.Fatal(err)
 }
 
-func handlePage(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(200)
+// hands over Entries to Handler and prints them out in template
+func handlePage(bookStorage *jsondb.BookStorage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(200)
 
-	tmplt, _ = template.ParseFiles("index.html")
-
-	/*err := tmplt.Execute(w, &entries)
-	//fmt.Fprint(w, &entries)
-	if err != nil {
-		fmt.Println("error when executing template", err)
-		return
-	}*/
-
+		tmplt, _ = template.ParseFiles("index.html")
+		entries, _ := bookStorage.ListEntries()
+		err := tmplt.Execute(w, &entries)
+		if err != nil {
+			fmt.Println("error when executing template", err)
+			return
+		}
+	}
 }
 
 // submits guestbook entry (name, message)
-func submit(w http.ResponseWriter, r *http.Request) {
-	/*var newEntry model.GuestbookEntry
-	fmt.Println("method:", r.Method)
-	if r.Method == "GET" {
-		t, _ := template.ParseFiles("index.html")
-		t.Execute(w, nil)
-	} else {}
-		r.ParseForm()
-		now := time.Now().Format(time.RFC850)
-		newEntry = model.GuestbookEntry{ID: uuid.New(), Name: r.FormValue("name"), Message: r.FormValue("message"), CreatedAt: now}
-		/*entries = append(entries, newEntry)
-		fmt.Print(entries)
-		//jsondb.WriteJSON(dbcon, &entries)
-	}
-	http.Redirect(w, r, r.Header.Get("/"), 302)*/
+func submit(bookStorage *jsondb.BookStorage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var newEntry model.GuestbookEntry
+		fmt.Println("method:", r.Method)
+		if r.Method == "GET" {
+			t, _ := template.ParseFiles("index.html")
+			t.Execute(w, nil)
+		} else {
+			r.ParseForm()
+			newEntry = model.GuestbookEntry{Name: r.FormValue("name"), Message: r.FormValue("message")}
+			bookStorage.CreateEntry(&newEntry)
+			fmt.Print(&newEntry)
+		}
 
+		http.Redirect(w, r, r.Header.Get("/"), 302)
+	}
 }
