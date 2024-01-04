@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"guestbook/db"
 	"guestbook/db/jsondb"
 	"guestbook/model"
 	"log"
@@ -46,7 +47,7 @@ func main() {
 }
 
 // hands over Entries to Handler and prints them out in template
-func handlePage(s jsondb.Storage) http.HandlerFunc {
+func handlePage(s db.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 
@@ -62,7 +63,7 @@ func handlePage(s jsondb.Storage) http.HandlerFunc {
 }
 
 // submits guestbook entry (name, message)
-func submit(s jsondb.Storage) http.HandlerFunc {
+func submit(s db.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("method:", r.Method)
 		if r.Method == "GET" {
@@ -78,7 +79,7 @@ func submit(s jsondb.Storage) http.HandlerFunc {
 	}
 }
 
-func delete(s jsondb.Storage) http.HandlerFunc {
+func delete(s db.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		r.ParseForm()

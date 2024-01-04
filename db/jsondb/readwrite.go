@@ -11,19 +11,9 @@ import (
 	"github.com/google/uuid"
 )
 
-type Storage interface {
-	CreateEntry(*model.GuestbookEntry) (uuid.UUID, error)
-	ListEntries() ([]*model.GuestbookEntry, error)
-	DeleteEntry(uuid.UUID) error
-}
-
 type BookStorage struct {
 	filename string
 	entries  map[uuid.UUID]*model.GuestbookEntry
-}
-
-func getEntry(s Storage, entries *model.GuestbookEntry) (uuid.UUID, error) {
-	return s.CreateEntry(entries)
 }
 
 // creates new Storage for entries
