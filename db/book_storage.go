@@ -1,13 +1,13 @@
 package db
 
 import (
-	"github.com/led0nk/guestbook/db/jsondb"
+	"guestbook/model"
 
 	"github.com/google/uuid"
 )
 
 type BookStorage interface {
-	CreateEntry(*jsondb.GuestbookEntry) uuid.UUID
-	ListEntry()
-	DeleteEntry()
+	CreateEntry(*model.GuestbookEntry) (uuid.UUID, error)
+	ListEntries() ([]*model.GuestbookEntry, error)
+	DeleteEntry(uuid.UUID) error
 }
