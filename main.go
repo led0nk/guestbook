@@ -82,8 +82,8 @@ func delete(s jsondb.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		r.ParseForm()
-		//deleteEntry := model.GuestbookEntry{ID: r.FormValue("id")}
-		//s.DeleteEntry(deleteEntry)
+		//	deleteEntry := model.GuestbookEntry{ID: r.FormValue("id")} //problem here "id" is type uuid.UUID and requested from FormValue is string
+		//	s.DeleteEntry(deleteEntry)
 		http.Redirect(w, r, r.Header.Get("/"), 302)
 	}
 }
