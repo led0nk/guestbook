@@ -10,22 +10,29 @@ import (
 	"net/http"
 	"text/template"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // var filename string = "./jsondb/entries.json"
 var tmplt *template.Template
-var dbcon = flag.String("dbcon", "./jsondb/entries.json", "location of database")
-var entries = []jsondb.GuestbookEntry{}
 
 func main() {
 	m := http.NewServeMux()
 
 	var (
-		addr = flag.String("addr", ":8080", "default server port")
+		addr = flag.String("addr", ":8080", "server port")
+		//database = flag.String("data", "./db/jsondb/entries.json", "link to database")
 	)
 	flag.Parse()
+
+	//placeholder
+	bookStorage, _ := jsondb.CreateBookStorage("./entries.json")
+
+	//	newEntry := model.GuestbookEntry{Name: "Peter Müller", Message: "Message"}
+	//	bookStorage.CreateEntry(&newEntry)
+	entries, _ := bookStorage.ListEntries()
+	fmt.Println("list of entries:", entries)
+
+	//placeholder
 	m.HandleFunc("/", handlePage)
 	m.HandleFunc("/submit", submit)
 	m.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
@@ -47,33 +54,32 @@ func handlePage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
 
-	//jsondb.ReadJSON(dbcon, &entries)
 	tmplt, _ = template.ParseFiles("index.html")
 
-	err := tmplt.Execute(w, &entries)
+	/*err := tmplt.Execute(w, &entries)
 	//fmt.Fprint(w, &entries)
 	if err != nil {
 		fmt.Println("error when executing template", err)
 		return
-	}
+	}*/
 
 }
 
 // submits guestbook entry (name, message)
 func submit(w http.ResponseWriter, r *http.Request) {
-	var newEntry jsondb.GuestbookEntry
+	/*var newEntry model.GuestbookEntry
 	fmt.Println("method:", r.Method)
 	if r.Method == "GET" {
 		t, _ := template.ParseFiles("index.html")
 		t.Execute(w, nil)
-	} else {
+	} else {}
 		r.ParseForm()
 		now := time.Now().Format(time.RFC850)
-		newEntry = jsondb.GuestbookEntry{ID: uuid.New(), Name: r.FormValue("name"), Message: r.FormValue("message"), CreatedAt: now}
-		entries = append(entries, newEntry)
+		newEntry = model.GuestbookEntry{ID: uuid.New(), Name: r.FormValue("name"), Message: r.FormValue("message"), CreatedAt: now}
+		/*entries = append(entries, newEntry)
 		fmt.Print(entries)
 		//jsondb.WriteJSON(dbcon, &entries)
 	}
-	http.Redirect(w, r, r.Header.Get("/"), 302)
+	http.Redirect(w, r, r.Header.Get("/"), 302)*/
 
 }

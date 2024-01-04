@@ -3,6 +3,8 @@ package jsondb
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"guestbook/model"
 	"os"
 	"time"
 
@@ -11,16 +13,15 @@ import (
 
 type BookStorage struct {
 	filename string
-	entries  map[uuid.UUID]*GuestbookEntry
+	entries  map[uuid.UUID]*model.GuestbookEntry
 }
 
 // creates new Storage for entries
 func CreateBookStorage(filename string) (*BookStorage, error) {
 	storage := &BookStorage{
 		filename: filename,
-		entries:  make(map[uuid.UUID]*GuestbookEntry),
+		entries:  make(map[uuid.UUID]*model.GuestbookEntry),
 	}
-
 	if err := storage.readJSON(); err != nil {
 		return nil, err
 	}
@@ -28,7 +29,7 @@ func CreateBookStorage(filename string) (*BookStorage, error) {
 }
 
 // create new entry in GuestStorage
-func (b *BookStorage) CreateEntry(entry *GuestbookEntry) (uuid.UUID, error) {
+func (b *BookStorage) CreateEntry(entry *model.GuestbookEntry) (uuid.UUID, error) {
 
 	if entry.ID == uuid.Nil {
 		entry.ID = uuid.New()
@@ -47,8 +48,8 @@ func (b *BookStorage) CreateEntry(entry *GuestbookEntry) (uuid.UUID, error) {
 }
 
 // list entries from Storage
-func (b *BookStorage) ListEntries() ([]*GuestbookEntry, error) {
-	entrylist := make([]*GuestbookEntry, 0, len(b.entries))
+func (b *BookStorage) ListEntries() ([]*model.GuestbookEntry, error) {
+	entrylist := make([]*model.GuestbookEntry, 0, len(b.entries))
 	for _, entry := range b.entries {
 		entrylist = append(entrylist, entry)
 	}
@@ -56,10 +57,10 @@ func (b *BookStorage) ListEntries() ([]*GuestbookEntry, error) {
 }
 
 // write JSON data into readable format in file = filename
-func (b *BookStorage) writeJSON(filename *string, entries *[]GuestbookEntry) error {
+func (b *BookStorage) writeJSON() error {
 
-	f, _ := os.Create(*filename)
-	defer f.Close()
+	//f, _ := os.Create(*filename)
+	//defer f.Close()
 	as_json, err := json.MarshalIndent(b.entries, "", "\t")
 	if err != nil {
 		return err
@@ -75,6 +76,7 @@ func (b *BookStorage) writeJSON(filename *string, entries *[]GuestbookEntry) err
 // read JSON data from file = filename
 func (b *BookStorage) readJSON() error {
 	if _, err := os.Stat(b.filename); os.IsNotExist(err) {
+		fmt.Println("file does not exist", err)
 		return nil
 	}
 	data, err := os.ReadFile(b.filename)
