@@ -3,13 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
-
 	"guestbook/db/jsondb"
 	"guestbook/model"
+	"log"
 	"net/http"
 	"text/template"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // var filename string = "./jsondb/entries.json"
@@ -20,7 +21,7 @@ func main() {
 
 	var (
 		addr = flag.String("addr", ":8080", "server port")
-		//database = flag.String("data", "./db/jsondb/entries.json", "link to database")
+		//database = flag.String("data", "./entries.json", "link to database")
 	)
 	flag.Parse()
 
@@ -46,13 +47,12 @@ func main() {
 }
 
 // hands over Entries to Handler and prints them out in template
-func handlePage(bookStorage *jsondb.BookStorage) http.HandlerFunc {
+func handlePage(s jsondb.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(200)
 
 		tmplt, _ = template.ParseFiles("index.html")
-		entries, _ := bookStorage.ListEntries()
+		entries, _ := s.ListEntries()
 		err := tmplt.Execute(w, &entries)
 		if err != nil {
 			fmt.Println("error when executing template", err)
@@ -61,19 +61,22 @@ func handlePage(bookStorage *jsondb.BookStorage) http.HandlerFunc {
 	}
 }
 
+func test(s jsondb.Storage, entry *model.GuestbookEntry) (uuid.UUID, error) {
+	return s.CreateEntry(entry)
+}
+
 // submits guestbook entry (name, message)
-func submit(bookStorage *jsondb.BookStorage) http.HandlerFunc {
+func submit(s jsondb.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var newEntry model.GuestbookEntry
 		fmt.Println("method:", r.Method)
 		if r.Method == "GET" {
-			t, _ := template.ParseFiles("index.html")
-			t.Execute(w, nil)
+			tmplt, _ := template.ParseFiles("index.html")
+			tmplt.Execute(w, nil)
 		} else {
 			r.ParseForm()
-			newEntry = model.GuestbookEntry{Name: r.FormValue("name"), Message: r.FormValue("message")}
-			bookStorage.CreateEntry(&newEntry)
-			fmt.Print(&newEntry)
+			newEntry := model.GuestbookEntry{Name: r.FormValue("name"), Message: r.FormValue("message")}
+			s.CreateEntry(&newEntry)
+
 		}
 
 		http.Redirect(w, r, r.Header.Get("/"), 302)

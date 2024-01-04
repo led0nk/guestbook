@@ -11,9 +11,19 @@ import (
 	"github.com/google/uuid"
 )
 
+type Storage interface {
+	CreateEntry(*model.GuestbookEntry) (uuid.UUID, error)
+	ListEntries() ([]*model.GuestbookEntry, error)
+	DeleteEntry(uuid.UUID) error
+}
+
 type BookStorage struct {
 	filename string
 	entries  map[uuid.UUID]*model.GuestbookEntry
+}
+
+func getEntry(s Storage, entries *model.GuestbookEntry) (uuid.UUID, error) {
+	return s.CreateEntry(entries)
 }
 
 // creates new Storage for entries
@@ -39,7 +49,7 @@ func (b *BookStorage) CreateEntry(entry *model.GuestbookEntry) (uuid.UUID, error
 	timestamp := time.Now().Format(time.RFC850)
 	entry.CreatedAt = timestamp
 
-	if err := b.writeJSON(); err != nil { //work out implementation of filename
+	if err := b.writeJSON(); err != nil {
 		return uuid.Nil, err
 	}
 
@@ -98,7 +108,7 @@ func (b *BookStorage) DeleteEntry(entryID uuid.UUID) error {
 
 	delete(b.entries, entryID)
 
-	if err := b.writeJSON(); err != nil { //work out filename implementation
+	if err := b.writeJSON(); err != nil {
 		return err
 	}
 

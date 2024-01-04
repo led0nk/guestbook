@@ -3,13 +3,13 @@
 		"id": "39a502ac-ba10-430d-99ac-e0955eccb73b",
 		"name": "Peter Zwegat",
 		"message": "das Konto ist aber ganz schön leer",
-		"created_at": "2023-09-10T16:55:04.061919457+02:00"
+		"created_at": "Thursday, 04-Jan-24 10:55:22 CET"
 	},
 	"42a7b4d3-25c6-431f-8930-f611c16103e6": {
 		"id": "42a7b4d3-25c6-431f-8930-f611c16103e6",
 		"name": "Gabber Gandalf",
 		"message": "Wacken du Spast!",
-		"created_at": "2023-09-10T16:55:04.061919457+02:00"
+		"created_at": "Thursday, 04-Jan-24 10:55:22 CET"
 	},
 	"48621fbe-9e6f-4682-9ec1-5a986778acc0": {
 		"id": "48621fbe-9e6f-4682-9ec1-5a986778acc0",
@@ -23,10 +23,22 @@
 		"message": "Dies ist ein submit Test",
 		"created_at": "Thursday, 04-Jan-24 10:54:13 CET"
 	},
+	"a820869d-fb77-4de4-b4d5-8a2ea7ec1080": {
+		"id": "a820869d-fb77-4de4-b4d5-8a2ea7ec1080",
+		"name": "golang-Lehrer",
+		"message": "Interfaces sind toll",
+		"created_at": "Thursday, 04-Jan-24 14:40:43 CET"
+	},
 	"c0d2a303-19fc-4f6d-853b-76db938aeacc": {
 		"id": "c0d2a303-19fc-4f6d-853b-76db938aeacc",
 		"name": "Frodo",
 		"message": "wo ist Bilbo?",
 		"created_at": "Thursday, 04-Jan-24 10:59:00 CET"
+	},
+	"f7e2dfd7-512a-46ff-bec0-86ba6b9ff155": {
+		"id": "f7e2dfd7-512a-46ff-bec0-86ba6b9ff155",
+		"name": "testicle",
+		"message": "Ein weiterer TEstus maximus",
+		"created_at": "Thursday, 04-Jan-24 15:15:08 CET"
 	}
 }
