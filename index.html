@@ -34,6 +34,11 @@
 			<th>Timestamp:</th>
 			<td>{{ .CreatedAt }}</td>
 		</tr>
+		<tr>
+			<form action="/delete" method="post">
+				<input type="submit" value="Delete">
+			</form>
+		</tr>
 	</table>
 	<br>
 	{{end}}

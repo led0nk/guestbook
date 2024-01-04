@@ -6,9 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
-type Storage interface {
+type BookStorage interface {
 	CreateEntry(*model.GuestbookEntry) (uuid.UUID, error)
 	ListEntries() ([]*model.GuestbookEntry, error)
 	DeleteEntry(uuid.UUID) error
-	Submit()
 }

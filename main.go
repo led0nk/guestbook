@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"text/template"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // var filename string = "./jsondb/entries.json"
@@ -31,6 +29,7 @@ func main() {
 	//placeholder
 	m.HandleFunc("/", handlePage(bookStorage))
 	m.HandleFunc("/submit", submit(bookStorage))
+	m.HandleFunc("/delete", delete(bookStorage))
 	m.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 
 	srv := http.Server{
@@ -56,13 +55,10 @@ func handlePage(s jsondb.Storage) http.HandlerFunc {
 		err := tmplt.Execute(w, &entries)
 		if err != nil {
 			fmt.Println("error when executing template", err)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 	}
-}
-
-func test(s jsondb.Storage, entry *model.GuestbookEntry) (uuid.UUID, error) {
-	return s.CreateEntry(entry)
 }
 
 // submits guestbook entry (name, message)
@@ -78,7 +74,16 @@ func submit(s jsondb.Storage) http.HandlerFunc {
 			s.CreateEntry(&newEntry)
 
 		}
+		http.Redirect(w, r, r.Header.Get("/"), 302)
+	}
+}
 
+func delete(s jsondb.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		r.ParseForm()
+		//deleteEntry := model.GuestbookEntry{ID: r.FormValue("id")}
+		//s.DeleteEntry(deleteEntry)
 		http.Redirect(w, r, r.Header.Get("/"), 302)
 	}
 }
