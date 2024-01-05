@@ -1,50 +1,32 @@
 {
-	"39a502ac-ba10-430d-99ac-e0955eccb73b": {
-		"id": "39a502ac-ba10-430d-99ac-e0955eccb73b",
-		"name": "Peter Zwegat",
-		"message": "das Konto ist aber ganz schön leer",
-		"created_at": "Thursday, 04-Jan-24 10:55:22 CET"
+	"01ce74e0-3224-402b-9680-d0ff329315e2": {
+		"id": "01ce74e0-3224-402b-9680-d0ff329315e2",
+		"name": "123",
+		"message": "456",
+		"created_at": "Friday, 05-Jan-24 18:17:00 CET"
 	},
-	"42a7b4d3-25c6-431f-8930-f611c16103e6": {
-		"id": "42a7b4d3-25c6-431f-8930-f611c16103e6",
-		"name": "Gabber Gandalf",
-		"message": "Wacken du Spast!",
-		"created_at": "Thursday, 04-Jan-24 10:55:22 CET"
+	"0e6a6e62-388b-4a4f-aa47-beed9c477403": {
+		"id": "0e6a6e62-388b-4a4f-aa47-beed9c477403",
+		"name": "bvxcb",
+		"message": "2345234",
+		"created_at": "Friday, 05-Jan-24 19:06:29 CET"
 	},
-	"48621fbe-9e6f-4682-9ec1-5a986778acc0": {
-		"id": "48621fbe-9e6f-4682-9ec1-5a986778acc0",
-		"name": "Gollum",
-		"message": "tut weh",
-		"created_at": "Thursday, 04-Jan-24 10:55:22 CET"
+	"6aa49b78-aab6-4a97-8c35-6d24c908dded": {
+		"id": "6aa49b78-aab6-4a97-8c35-6d24c908dded",
+		"name": "Peter Pan",
+		"message": "1234\r\n\r\n",
+		"created_at": "Friday, 05-Jan-24 18:15:21 CET"
 	},
-	"5ff29515-f466-4572-ab57-c477be56268f": {
-		"id": "5ff29515-f466-4572-ab57-c477be56268f",
-		"name": "Peter Müller",
-		"message": "Dies ist ein submit Test",
-		"created_at": "Thursday, 04-Jan-24 10:54:13 CET"
+	"9a1516d3-d833-4d60-a79d-71e33c5f2378": {
+		"id": "9a1516d3-d833-4d60-a79d-71e33c5f2378",
+		"name": "testentry",
+		"message": "hilfe",
+		"created_at": "Friday, 05-Jan-24 18:16:57 CET"
 	},
-	"a820869d-fb77-4de4-b4d5-8a2ea7ec1080": {
-		"id": "a820869d-fb77-4de4-b4d5-8a2ea7ec1080",
-		"name": "golang-Lehrer",
-		"message": "Interfaces sind toll",
-		"created_at": "Thursday, 04-Jan-24 14:40:43 CET"
-	},
-	"c0d2a303-19fc-4f6d-853b-76db938aeacc": {
-		"id": "c0d2a303-19fc-4f6d-853b-76db938aeacc",
-		"name": "Frodo",
-		"message": "wo ist Bilbo?",
-		"created_at": "Thursday, 04-Jan-24 10:59:00 CET"
-	},
-	"d178ef80-439c-486c-9380-389cfd866c5a": {
-		"id": "d178ef80-439c-486c-9380-389cfd866c5a",
-		"name": "Alder Schwede",
-		"message": "hallo es war tollllllllllllllll",
-		"created_at": "Thursday, 04-Jan-24 21:32:13 CET"
-	},
-	"f7e2dfd7-512a-46ff-bec0-86ba6b9ff155": {
-		"id": "f7e2dfd7-512a-46ff-bec0-86ba6b9ff155",
-		"name": "testicle",
-		"message": "Ein weiterer TEstus maximus",
-		"created_at": "Thursday, 04-Jan-24 15:15:08 CET"
+	"ef55a4c6-7e56-4627-9ec2-f8c5bfca11ed": {
+		"id": "ef55a4c6-7e56-4627-9ec2-f8c5bfca11ed",
+		"name": "neuster Eintrag",
+		"message": "öalskdjfasldf\r\n",
+		"created_at": "Friday, 05-Jan-24 19:08:13 CET"
 	}
 }

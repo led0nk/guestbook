@@ -3,13 +3,17 @@ package main
 import (
 	"flag"
 	"fmt"
-	"guestbook/db"
-	"guestbook/db/jsondb"
-	"guestbook/model"
 	"log"
 	"net/http"
+	"net/url"
 	"text/template"
 	"time"
+
+	"github.com/led0nk/guestbook/db"
+	"github.com/led0nk/guestbook/db/jsondb"
+	"github.com/led0nk/guestbook/model"
+
+	"github.com/google/uuid"
 )
 
 // var filename string = "./jsondb/entries.json"
@@ -19,18 +23,30 @@ func main() {
 	m := http.NewServeMux()
 
 	var (
-		addr = flag.String("addr", ":8080", "server port")
-		//database = flag.String("data", "./entries.json", "link to database")
+		addr    = flag.String("addr", ":8080", "server port")
+		connStr = flag.String("data", "file://entries.json", "link to database")
 	)
 	flag.Parse()
 
-	//placeholder
-	bookStorage, _ := jsondb.CreateBookStorage("./entries.json")
+	u, err := url.Parse(*connStr)
+	if err != nil {
+		panic(err)
+	}
+	log.Print(u)
+	var database db.Storage
+	switch u.Scheme {
+	case "file":
+		log.Println("opening:", u.Hostname())
+		bookStorage, _ := jsondb.CreateBookStorage("./entries.json")
+		database = bookStorage
+	default:
+		panic("bad storage")
+	}
 
 	//placeholder
-	m.HandleFunc("/", handlePage(bookStorage))
-	m.HandleFunc("/submit", submit(bookStorage))
-	m.HandleFunc("/delete", delete(bookStorage))
+	m.HandleFunc("/", handlePage(database))
+	m.HandleFunc("/submit", submit(database))
+	m.HandleFunc("/delete", delete(database))
 	m.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 
 	srv := http.Server{
@@ -42,8 +58,8 @@ func main() {
 
 	fmt.Println("server started on port", addr)
 	fmt.Println(time.Now())
-	err := srv.ListenAndServe()
-	log.Fatal(err)
+	error := srv.ListenAndServe()
+	log.Fatal(error)
 }
 
 // hands over Entries to Handler and prints them out in template
@@ -52,7 +68,14 @@ func handlePage(s db.Storage) http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/html")
 
 		tmplt, _ = template.ParseFiles("index.html")
-		entries, _ := s.ListEntries()
+		searchName := r.URL.Query().Get("q")
+		fmt.Println("Ausgabe Query ", searchName)
+		var entries []*model.GuestbookEntry
+		if searchName != "" {
+			entries, _ = s.GetEntryByName(searchName)
+		} else {
+			entries, _ = s.ListEntries()
+		}
 		err := tmplt.Execute(w, &entries)
 		if err != nil {
 			fmt.Println("error when executing template", err)
@@ -83,8 +106,12 @@ func delete(s db.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		r.ParseForm()
-		//	deleteEntry := model.GuestbookEntry{ID: r.FormValue("id")} //problem here "id" is type uuid.UUID and requested from FormValue is string
-		//	s.DeleteEntry(deleteEntry)
+		strUuid := r.Form.Get("Delete")
+		uuidStr, _ := uuid.Parse(strUuid)
+
+		deleteEntry := model.GuestbookEntry{ID: uuidStr}
+		s.DeleteEntry(deleteEntry.ID)
 		http.Redirect(w, r, r.Header.Get("/"), 302)
+
 	}
 }

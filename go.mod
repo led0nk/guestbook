@@ -1,4 +1,4 @@
-module guestbook
+module github.com/led0nk/guestbook
 
 go 1.21.5
 

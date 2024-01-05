@@ -13,6 +13,11 @@
 		<textarea id="message" name="message"></textarea><br>
 		<input type="submit" value="Submit">
 	</form> 
+	<form action="/" method="get">
+		<label for="name">Search by Name:</label><br>
+		<input type="text" id="q" name="q"><br>
+		<input type="submit" value="Submit">
+	</form>
 	{{range .}}
 	<br>
 	<table>
@@ -36,7 +41,7 @@
 		</tr>
 		<tr>
 			<form action="/delete" method="post">
-				<button type="submit" value="id" name="Delete">Delete</button>
+				<button type="submit" value="{{ .ID }}" name="Delete">Delete</button>
 			</form>
 			
 		</tr>

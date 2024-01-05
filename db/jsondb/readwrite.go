@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"guestbook/model"
 	"os"
+	"sort"
 	"time"
+
+	"github.com/led0nk/guestbook/model"
 
 	"github.com/google/uuid"
 )
@@ -53,14 +55,15 @@ func (b *BookStorage) ListEntries() ([]*model.GuestbookEntry, error) {
 	for _, entry := range b.entries {
 		entrylist = append(entrylist, entry)
 	}
+
+	sort.Slice(entrylist, func(i, j int) bool { return entrylist[i].CreatedAt > entrylist[j].CreatedAt })
 	return entrylist, nil
+
 }
 
 // write JSON data into readable format in file = filename
 func (b *BookStorage) writeJSON() error {
 
-	//f, _ := os.Create(*filename)
-	//defer f.Close()
 	as_json, err := json.MarshalIndent(b.entries, "", "\t")
 	if err != nil {
 		return err
@@ -103,4 +106,21 @@ func (b *BookStorage) DeleteEntry(entryID uuid.UUID) error {
 	}
 
 	return nil
+}
+
+func (b *BookStorage) GetEntryByName(name string) ([]*model.GuestbookEntry, error) {
+	if name == "" {
+		return nil, errors.New("requires a name")
+	}
+
+	entries := []*model.GuestbookEntry{}
+	for _, entry := range b.entries {
+		if entry.Name == name {
+			entries = append(entries, entry)
+		}
+	}
+	if len(entries) == 0 {
+		return nil, errors.New("no entries found for " + name)
+	}
+	return entries, nil
 }
