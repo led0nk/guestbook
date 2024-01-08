@@ -47,7 +47,9 @@ func main() {
 	m.HandleFunc("/", handlePage(database))
 	m.HandleFunc("/submit", submit(database))
 	m.HandleFunc("/delete", delete(database))
-	m.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
+	m.HandleFunc("/login", login())
+	//m.HandleFunc("/signup")
+	//m.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 
 	srv := http.Server{
 		Handler:      m,
@@ -66,10 +68,8 @@ func main() {
 func handlePage(s db.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-
-		tmplt, _ = template.ParseFiles("index.html")
+		tmplt, _ = template.ParseFiles("index.html", "header.html", "content.html")
 		searchName := r.URL.Query().Get("q")
-		fmt.Println("Ausgabe Query ", searchName)
 		var entries []*model.GuestbookEntry
 		if searchName != "" {
 			entries, _ = s.GetEntryByName(searchName)
@@ -90,11 +90,15 @@ func submit(s db.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("method:", r.Method)
 		if r.Method == "GET" {
-			tmplt, _ := template.ParseFiles("index.html")
+			tmplt, _ := template.ParseFiles("index.html", "header.html", "content.html")
 			tmplt.Execute(w, nil)
 		} else {
 			r.ParseForm()
 			newEntry := model.GuestbookEntry{Name: r.FormValue("name"), Message: r.FormValue("message")}
+			if newEntry.Name == "" {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
 			s.CreateEntry(&newEntry)
 
 		}
@@ -113,5 +117,17 @@ func delete(s db.Storage) http.HandlerFunc {
 		s.DeleteEntry(deleteEntry.ID)
 		http.Redirect(w, r, r.Header.Get("/"), 302)
 
+	}
+}
+
+func login() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tmplt, _ := template.ParseFiles("index.html", "header.html", "login.html")
+		err := tmplt.Execute(w, "test")
+		if err != nil {
+			fmt.Println("error when executing template", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	}
 }

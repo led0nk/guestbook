@@ -1,52 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<link rel="stylesheet" type="text/css" href="assets/style.css"/>
-</head>
-<body>
-<p align="center">Hello, please insert greetings</p>
-	<form action="/submit" method="post">
-		<label for="name">Name:</label><br>
-		<input type="text" id="name" name="name"><br>
-		<label for="message">Message:</label><br>
-		<textarea id="message" name="message"></textarea><br>
-		<input type="submit" value="Submit">
-	</form> 
-	<form action="/" method="get">
-		<label for="name">Search by Name:</label><br>
-		<input type="text" id="q" name="q"><br>
-		<input type="submit" value="Submit">
-	</form>
-	{{range .}}
-	<br>
-	<table>
-		<tr>
-			<th>ID:</th>
-			<td>{{ .ID }}</td>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<script src="https://cdn.tailwindcss.com"></script>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" /> 
+	</head>
+	<body class="bg-slate-300">
+		
+	{{ template "header" .}} {{ template "content" .}}
 	
-		</tr>
-		<tr>
-			<th>Name:</th>
-			<td>{{ .Name }}</td>
 
-		</tr>
-		<tr>
-			<th>Message:</th>
-			<td>{{ .Message }}</td>
-		</tr>
-		<tr>
-			<th>Timestamp:</th>
-			<td>{{ .CreatedAt }}</td>
-		</tr>
-		<tr>
-			<form action="/delete" method="post">
-				<button type="submit" value="{{ .ID }}" name="Delete">Delete</button>
-			</form>
+
+
+
+
+		<div class="flex flex-1 justify-center items-center ">
+			<div>
+			<form action="/" 
+				method="get"
+				class="flex flex-col w-full"> 
+				<label for="name">Search by Name:</label>
+				<div class="flex flex-row">
+					
+					<div class="mt-2">
+						<input 
+						type="text" 
+						id="q" 
+						name="q" 
+						placeholder="Search for names.." 
+						class=" placeholder:italic placeholder placeholder:text-gray-400 text-slate-400 block
+								rounded-full border-0 px-3 md:px-4 py-1.5 text-gray-900 shadow-sm
+								ring-1 ring-inset ring-gray-300 
+								focus:ring-2 focus:ring-inset focus:ring-indigo-600 focus:outline-none sm:text-sm sm:leading-6
+								hover:ring-3 hover:ring-inset hover:ring-indigo-600 hover:shadow-sm">
+					</div>
+				
+				<div class="">
+						<div class="mt-2">
+							<div>
+							<button 
+								type="submit" 
+								value="Submit" 
+								class="rounded-full bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm 
+								border-2 border-indigo-600 hover:text-indigo-600
+								hover:bg-transparent focus-visible:outline focus-visible:outline-2 
+								focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Search</button>
+						
+							</div>
+						</div>
+					</div>
+				</div>
+				</form> 
+			</div>
+		</div>
+
+
+	
+
+
+
+
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 
+					pl-4 pr-4 justify-start items-start gap-4  ">
 			
-		</tr>
-	</table>
-	<br>
-	{{end}}
-</body>
+					{{range .}}
+			
+			<div class="w-full space-y-4 relative bg-white 
+						dark:bg-slate-800 rounded-xl px-6 py-3 ring-1 ring-slate-900/5 shadow-xl hover:shadow-2xl">
+				<div>
+				<form action="/delete" method="post">
+					<button 
+						type="submit" 
+						value="{{ .ID }}" 
+						name="Delete" 
+						class="absolute top-[8px] right-[8px] text-gray-500 hover:text-red-600 leading-4">&#x2715;</button>
+				</form>
+				<h3 class="text-slate-900 dark:text-white mt-1 text-base font-semibold tracking-tight
+							border-b dark:border-gray-100/10 border-gray-900/10 ">{{ .Name }}<br></h3>
+				<p class="flex text-slate-500 dark:text-slate-400 mt-2 mb-4 text-sm"> {{ .Message }}<br></p>
+				<p class="text-slate-400 mt-2 mr-2 text-sm absolute bottom-[8px] right-[8px]">{{ .CreatedAt }}<br></p>
+				</div>
+			</div>
+			{{end}}
+		</div>
+
+
+	</body>
 </html>

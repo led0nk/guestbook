@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/led0nk/guestbook/model"
@@ -16,6 +17,7 @@ import (
 type BookStorage struct {
 	filename string
 	entries  map[uuid.UUID]*model.GuestbookEntry
+	mu       sync.Mutex
 }
 
 // creates new Storage for entries
@@ -32,7 +34,8 @@ func CreateBookStorage(filename string) (*BookStorage, error) {
 
 // create new entry in GuestStorage
 func (b *BookStorage) CreateEntry(entry *model.GuestbookEntry) (uuid.UUID, error) {
-
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if entry.ID == uuid.Nil {
 		entry.ID = uuid.New()
 	}
@@ -51,6 +54,8 @@ func (b *BookStorage) CreateEntry(entry *model.GuestbookEntry) (uuid.UUID, error
 
 // list entries from Storage
 func (b *BookStorage) ListEntries() ([]*model.GuestbookEntry, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	entrylist := make([]*model.GuestbookEntry, 0, len(b.entries))
 	for _, entry := range b.entries {
 		entrylist = append(entrylist, entry)
@@ -91,6 +96,8 @@ func (b *BookStorage) readJSON() error {
 
 // delete Entry from storage and write to JSON
 func (b *BookStorage) DeleteEntry(entryID uuid.UUID) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if entryID == uuid.Nil {
 		return errors.New("requires an entryID")
 	}
@@ -109,6 +116,8 @@ func (b *BookStorage) DeleteEntry(entryID uuid.UUID) error {
 }
 
 func (b *BookStorage) GetEntryByName(name string) ([]*model.GuestbookEntry, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if name == "" {
 		return nil, errors.New("requires a name")
 	}

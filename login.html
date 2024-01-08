@@ -1,0 +1,65 @@
+{{ define "content" }}
+
+<div class="flex justify-center items-center h-screen container ">
+    <div class="w-96 p-6 shadow-lg bg-white rounded-lg">
+        <h1 class="text-3xl block text-center font-semibold">
+            <i class="fa-solid fa-user"></i> Login:
+        </h1>
+        <form action="/login"
+                method="post">
+            <hr class="mt-3">
+            <div class="mt-3">
+                <label for="username"
+                        class="block text-base mb-2">Username:</label>
+                <input type="text" 
+                        id="username" 
+                        placeholder="Enter username..."
+                        class="border w-full text-base px-2 py-1
+                                placeholder:italic placeholder placeholder:text-gray-400 text-slate-400 block
+                                rounded-full border-0 px-3 md:px-4 py-1.5 text-gray-900 shadow-sm
+                                ring-1 ring-inset ring-gray-300 
+                                focus:ring-2 focus:ring-inset focus:ring-indigo-600 focus:outline-none sm:text-sm sm:leading-6
+                                hover:ring-3 hover:ring-inset hover:ring-indigo-600 hover:shadow-sm">
+            </div>
+            <div class="mt-3">
+                <label for="password"
+                        class="block text-base mb-2">Password:</label>
+                <input type="password" 
+                        id="password" 
+                        placeholder="Enter password..."
+                        class="border w-full text-base px-2 py-1
+                                placeholder:italic placeholder placeholder:text-gray-400 text-slate-400 block
+                                rounded-full border-0 px-3 md:px-4 py-1.5 text-gray-900 shadow-sm
+                                ring-1 ring-inset ring-gray-300 
+                                focus:ring-2 focus:ring-inset focus:ring-indigo-600 focus:outline-none sm:text-sm sm:leading-6
+                                hover:ring-3 hover:ring-inset hover:ring-indigo-600 hover:shadow-sm">
+            </div>
+            
+            <div class="mt-3 flex justify-between items-center text-xs">
+                <div class="">
+                    <input type="checkbox"
+                            id="check"
+                            value=""
+                            class="ring-1 ring-inset ring-gray-300 border-0 rounded outline-none">
+                    <label class="text-slate-500">Remember Me</label>
+                </div>
+                <div class="">
+                    <a href="forgot-pw" class=" text-indigo-600">Forgot Password?</a>
+                </div>
+            </div>
+            <div class="mt-3">
+                <button 
+                    type="submit" 
+                    value="Submit" 
+                    class="rounded-full w-full bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm 
+                            border-2 border-indigo-600 hover:text-indigo-600
+                            hover:bg-transparent focus-visible:outline focus-visible:outline-2 
+                            focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Login</button>
+            </div>
+                         
+        </form>
+    </div>
+</div>
+
+
+{{ end }}
