@@ -48,7 +48,7 @@ func main() {
 	m.HandleFunc("/submit", submit(database))
 	m.HandleFunc("/delete", delete(database))
 	m.HandleFunc("/login", login())
-	//m.HandleFunc("/signup")
+	m.HandleFunc("/signup", signup())
 	//m.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 
 	srv := http.Server{
@@ -123,6 +123,18 @@ func delete(s db.Storage) http.HandlerFunc {
 func login() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmplt, _ := template.ParseFiles("index.html", "header.html", "login.html")
+		err := tmplt.Execute(w, "test")
+		if err != nil {
+			fmt.Println("error when executing template", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+}
+
+func signup() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tmplt, _ := template.ParseFiles("index.html", "header.html", "signup.html")
 		err := tmplt.Execute(w, "test")
 		if err != nil {
 			fmt.Println("error when executing template", err)
