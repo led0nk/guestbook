@@ -5,14 +5,15 @@
         <h1 class="text-3xl block text-center font-semibold">
             <i class="fa-solid fa-user"></i> Login:
         </h1>
-        <form action="/login"
+        <form action="/loginauth"
                 method="post">
             <hr class="mt-3">
             <div class="mt-3">
                 <label for="email"
                         class="block text-base mb-2">Email:</label>
                 <input type="text" 
-                        id="username" 
+                        id="email" 
+                        name="email"
                         placeholder="Enter email..."
                         class="border w-full text-base px-2 py-1
                                 placeholder:italic placeholder placeholder:text-gray-400 text-slate-600 block
@@ -26,6 +27,7 @@
                         class="block text-base mb-2">Password:</label>
                 <input type="password" 
                         id="password" 
+                        name="password"
                         placeholder="Enter password..."
                         class="border w-full text-base px-2 py-1
                                 placeholder:italic placeholder placeholder:text-gray-400 text-slate-600 block

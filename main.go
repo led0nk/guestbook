@@ -6,12 +6,14 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"text/template"
 	"time"
 
 	"github.com/led0nk/guestbook/db"
 	"github.com/led0nk/guestbook/db/jsondb"
 	"github.com/led0nk/guestbook/model"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/google/uuid"
 )
@@ -23,33 +25,38 @@ func main() {
 	m := http.NewServeMux()
 
 	var (
-		addr    = flag.String("addr", ":8080", "server port")
-		connStr = flag.String("data", "file://entries.json", "link to database")
+		addr     = flag.String("addr", ":8080", "server port")
+		entryStr = flag.String("entrydata", "file://entries.json", "link to entry-database")
+		//userStr  = flag.String("userdata", "file://user.json", "link to user-database")
 	)
 	flag.Parse()
 
-	u, err := url.Parse(*connStr)
+	u, err := url.Parse(*entryStr)
 	if err != nil {
 		panic(err)
 	}
 	log.Print(u)
-	var database db.Storage
+	var gueststore db.GuestBookStorage
+	var userstore db.UserStorage
 	switch u.Scheme {
 	case "file":
 		log.Println("opening:", u.Hostname())
 		bookStorage, _ := jsondb.CreateBookStorage("./entries.json")
-		database = bookStorage
+		userStorage, _ := jsondb.CreateUserStorage("./user.json")
+		gueststore = bookStorage
+		userstore = userStorage
 	default:
 		panic("bad storage")
 	}
 
 	//placeholder
-	m.HandleFunc("/", handlePage(database))
-	m.HandleFunc("/submit", submit(database))
-	m.HandleFunc("/delete", delete(database))
+	m.HandleFunc("/", handlePage(gueststore))
+	m.HandleFunc("/submit", submit(gueststore))
+	m.HandleFunc("/delete", delete(gueststore))
 	m.HandleFunc("/login", login())
-	m.HandleFunc("/signup", signup())
-	//m.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
+	m.HandleFunc("/loginauth", loginAuth(userstore))
+	m.HandleFunc("/signup", signupHandler())
+	m.HandleFunc("/signupauth", signupAuth(userstore))
 
 	srv := http.Server{
 		Handler:      m,
@@ -65,7 +72,7 @@ func main() {
 }
 
 // hands over Entries to Handler and prints them out in template
-func handlePage(s db.Storage) http.HandlerFunc {
+func handlePage(s db.GuestBookStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		tmplt, _ = template.ParseFiles("index.html", "header.html", "content.html")
@@ -86,7 +93,7 @@ func handlePage(s db.Storage) http.HandlerFunc {
 }
 
 // submits guestbook entry (name, message)
-func submit(s db.Storage) http.HandlerFunc {
+func submit(s db.GuestBookStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("method:", r.Method)
 		if r.Method == "GET" {
@@ -106,7 +113,7 @@ func submit(s db.Storage) http.HandlerFunc {
 	}
 }
 
-func delete(s db.Storage) http.HandlerFunc {
+func delete(s db.GuestBookStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		r.ParseForm()
@@ -132,7 +139,7 @@ func login() http.HandlerFunc {
 	}
 }
 
-func signup() http.HandlerFunc {
+func signupHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmplt, _ := template.ParseFiles("index.html", "header.html", "signup.html")
 		err := tmplt.Execute(w, "test")
@@ -142,4 +149,51 @@ func signup() http.HandlerFunc {
 			return
 		}
 	}
+}
+
+func loginAuth(u db.UserStorage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("loginHandler running")
+		r.ParseForm()
+		email := r.FormValue("email")
+		storedpassword, _ := u.GetHash(email)
+		if err := bcrypt.CompareHashAndPassword(storedpassword, []byte(r.FormValue("email"))); err != nil {
+			fmt.Println("error password is not matching", storedpassword)
+			fmt.Println("right hash:")
+			return
+		}
+		fmt.Println("correct Password input", storedpassword)
+		//execute xyz
+	}
+}
+
+func signupAuth(u db.UserStorage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		name := []string{r.FormValue("firstname"), r.FormValue("lastname")}
+		joinedName := strings.Join(name, " ")
+		password := r.FormValue("password1")
+		if password != r.FormValue("password2") {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(password), 14)
+		fmt.Println("name:", joinedName, "password:", hashedpassword, "email:", r.FormValue("email"))
+		newUser := model.User{Email: r.FormValue("email"), Name: joinedName, Password: hashedpassword}
+		u.CreateUser(&newUser)
+	}
+}
+
+func parseUserForm(raw url.Values) map[string]url.Values {
+	input := make(map[string]url.Values)
+	for k, v := range raw {
+		got := strings.Split(k, ".")
+		if len(got) != 2 {
+			continue
+		}
+		if input[got[0]] == nil {
+			input[got[0]][got[1]] = v
+		}
+	}
+	return input
 }
