@@ -1,8 +1,6 @@
 package db
 
 import (
-	"net/url"
-
 	"github.com/led0nk/guestbook/model"
 
 	"github.com/google/uuid"
@@ -19,5 +17,5 @@ type UserStorage interface {
 	CreateUser(*model.User) (uuid.UUID, error)
 	GetUserByEmail(string) ([]*model.User, error)
 	GetHash(string) ([]byte, error)
-	ValidateUserInput(url.Values) error
+	//ValidateUserInput(url.Values) error
 }

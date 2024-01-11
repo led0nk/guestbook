@@ -55,7 +55,7 @@ func main() {
 	m.HandleFunc("/delete", delete(gueststore))
 	m.HandleFunc("/login", login())
 	m.HandleFunc("/loginauth", loginAuth(userstore))
-	m.HandleFunc("/signup", signupHandler())
+	m.HandleFunc("/signup", signup())
 	m.HandleFunc("/signupauth", signupAuth(userstore))
 
 	srv := http.Server{
@@ -127,6 +127,7 @@ func delete(s db.GuestBookStorage) http.HandlerFunc {
 	}
 }
 
+// show login Form
 func login() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmplt, _ := template.ParseFiles("index.html", "header.html", "login.html")
@@ -139,7 +140,8 @@ func login() http.HandlerFunc {
 	}
 }
 
-func signupHandler() http.HandlerFunc {
+// show signup Form
+func signup() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmplt, _ := template.ParseFiles("index.html", "header.html", "signup.html")
 		err := tmplt.Execute(w, nil)
@@ -151,6 +153,7 @@ func signupHandler() http.HandlerFunc {
 	}
 }
 
+// login authentication and check if user exists
 func loginAuth(u db.UserStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("loginHandler running")
@@ -167,10 +170,11 @@ func loginAuth(u db.UserStorage) http.HandlerFunc {
 	}
 }
 
+// signup authentication and validation of user input
 func signupAuth(u db.UserStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-		err := u.ValidateUserInput(r.Form)
+		err := jsondb.ValidateUserInput(r.Form)
 		if err != nil {
 			fmt.Println("user form not valid:", err)
 			http.Redirect(w, r, "/signup", 302)

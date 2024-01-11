@@ -113,6 +113,10 @@ func ValidateUserInput(v url.Values) error {
 	if len(v["password"][0]) < 8 || len(v["password"][1]) < 8 {
 		return errors.New("password is too short, should be at least 8 characters long")
 	}
+	/*if strings.ContainsAny(v["password"][0], "[0-9]") == false {
+		return errors.New("password does not contain any numbers, please correct")
+	}*/
+
 	_, emailValid := mail.ParseAddress(v.Get("email"))
 	if emailValid != nil {
 		return errors.New("email is not in correct format, please try again")
