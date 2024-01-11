@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/mail"
+	"net/url"
 	"os"
 	"sync"
 
@@ -95,4 +97,25 @@ func (u *UserStorage) GetHash(email string) ([]byte, error) {
 	}
 
 	return hashedpassword, nil
+}
+
+func ValidateUserInput(v url.Values) error {
+
+	if v.Get("firstname") == "" || v.Get("lastname") == "" {
+		return errors.New("fields cannot be empty")
+	}
+	if v["password"][0] != v["password"][1] {
+		return errors.New("password doesn't match, please try again")
+	}
+	if len(v["password"][0]) > 72 || len(v["password"][1]) > 72 {
+		return errors.New("password is too long, only 72 characters allowed")
+	}
+	if len(v["password"][0]) < 8 || len(v["password"][1]) < 8 {
+		return errors.New("password is too short, should be at least 8 characters long")
+	}
+	_, emailValid := mail.ParseAddress(v.Get("email"))
+	if emailValid != nil {
+		return errors.New("email is not in correct format, please try again")
+	}
+	return nil
 }

@@ -130,9 +130,9 @@ func delete(s db.GuestBookStorage) http.HandlerFunc {
 func login() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmplt, _ := template.ParseFiles("index.html", "header.html", "login.html")
-		err := tmplt.Execute(w, "test")
+		err := tmplt.Execute(w, nil)
 		if err != nil {
-			fmt.Println("error when executing template", err)
+			fmt.Println("error when executing template", tmplt)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -142,9 +142,9 @@ func login() http.HandlerFunc {
 func signupHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmplt, _ := template.ParseFiles("index.html", "header.html", "signup.html")
-		err := tmplt.Execute(w, "test")
+		err := tmplt.Execute(w, nil)
 		if err != nil {
-			fmt.Println("error when executing template", err)
+			fmt.Println("error when executing template", tmplt)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -170,30 +170,15 @@ func loginAuth(u db.UserStorage) http.HandlerFunc {
 func signupAuth(u db.UserStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-		name := []string{r.FormValue("firstname"), r.FormValue("lastname")}
-		joinedName := strings.Join(name, " ")
-		password := r.FormValue("password1")
-		if password != r.FormValue("password2") {
-			w.WriteHeader(http.StatusBadRequest)
+		err := u.ValidateUserInput(r.Form)
+		if err != nil {
+			fmt.Println("user form not valid:", err)
+			http.Redirect(w, r, "/signup", 302)
 			return
 		}
-		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(password), 14)
-		fmt.Println("name:", joinedName, "password:", hashedpassword, "email:", r.FormValue("email"))
+		joinedName := strings.Join([]string{r.FormValue("firstname"), r.FormValue("lastname")}, " ")
+		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(r.Form.Get("password")), 14)
 		newUser := model.User{Email: r.FormValue("email"), Name: joinedName, Password: hashedpassword}
 		u.CreateUser(&newUser)
 	}
-}
-
-func parseUserForm(raw url.Values) map[string]url.Values {
-	input := make(map[string]url.Values)
-	for k, v := range raw {
-		got := strings.Split(k, ".")
-		if len(got) != 2 {
-			continue
-		}
-		if input[got[0]] == nil {
-			input[got[0]][got[1]] = v
-		}
-	}
-	return input
 }
