@@ -1,4 +1,10 @@
 {
+	"1756dd66-d8a3-4459-9180-0e2f3ff0416b": {
+		"id": "1756dd66-d8a3-4459-9180-0e2f3ff0416b",
+		"name": "abc",
+		"message": "def",
+		"created_at": "Thursday, 11-Jan-24 22:28:19 CET"
+	},
 	"57b445fe-19ea-41f6-b4f6-861d42aeade6": {
 		"id": "57b445fe-19ea-41f6-b4f6-861d42aeade6",
 		"name": "Peter Pan",
@@ -11,34 +17,10 @@
 		"message": "Testentry\r\n\t\t\t\t\t",
 		"created_at": "Sunday, 07-Jan-24 18:23:48 CET"
 	},
-	"c8e2b868-8477-4ace-bb73-89b9a5a34767": {
-		"id": "c8e2b868-8477-4ace-bb73-89b9a5a34767",
-		"name": "Next Entry",
-		"message": "123 Blasdflwe            ",
-		"created_at": "Monday, 08-Jan-24 09:34:26 CET"
-	},
-	"cb71dc70-2718-4725-8946-2bf459fb3e6e": {
-		"id": "cb71dc70-2718-4725-8946-2bf459fb3e6e",
-		"name": "abc",
-		"message": "test",
-		"created_at": "Sunday, 07-Jan-24 18:22:03 CET"
-	},
 	"d517e7dc-5463-487c-8b3b-d49741f91560": {
 		"id": "d517e7dc-5463-487c-8b3b-d49741f91560",
 		"name": "Peter Müller",
 		"message": "Hallo 123",
 		"created_at": "Saturday, 06-Jan-24 11:15:24 CET"
-	},
-	"ffd848f6-c55d-41de-8161-dbcf86ceb733": {
-		"id": "ffd848f6-c55d-41de-8161-dbcf86ceb733",
-		"name": "Peter-1",
-		"message": "hallo",
-		"created_at": "Friday, 05-Jan-24 20:14:47 CET"
-	},
-	"ffff1603-c891-4e1e-8fd1-8fcc6f99344c": {
-		"id": "ffff1603-c891-4e1e-8fd1-8fcc6f99344c",
-		"name": "Peter-78",
-		"message": "hallo",
-		"created_at": "Friday, 05-Jan-24 20:14:40 CET"
 	}
 }

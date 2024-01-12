@@ -91,12 +91,11 @@ func (u *UserStorage) GetHash(email string) ([]byte, error) {
 	for _, user := range u.user {
 		if user.Email == email {
 			hashedpassword = user.Password
-		} else {
-			return nil, errors.New("email not registered, please enter valid email")
+			return hashedpassword, nil
 		}
 	}
-
-	return hashedpassword, nil
+	fmt.Println(hashedpassword)
+	return nil, errors.New("no matching users found for this email")
 }
 
 func ValidateUserInput(v url.Values) error {

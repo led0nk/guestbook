@@ -8,8 +8,9 @@ import (
 	"net/url"
 	"strings"
 	"text/template"
-	"time"
 
+	"github.com/gin-contrib/sessions/cookie"
+	"github.com/gin-gonic/gin"
 	"github.com/led0nk/guestbook/db"
 	"github.com/led0nk/guestbook/db/jsondb"
 	"github.com/led0nk/guestbook/model"
@@ -18,14 +19,12 @@ import (
 	"github.com/google/uuid"
 )
 
-// var filename string = "./jsondb/entries.json"
-var tmplt *template.Template
-
 func main() {
-	m := http.NewServeMux()
+	router := gin.Default()
+	router.LoadHTMLGlob("templates/*.html")
 
 	var (
-		addr     = flag.String("addr", ":8080", "server port")
+		//addr     = flag.String("addr", "localhost:8080", "server port")
 		entryStr = flag.String("entrydata", "file://entries.json", "link to entry-database")
 		//userStr  = flag.String("userdata", "file://user.json", "link to user-database")
 	)
@@ -50,139 +49,126 @@ func main() {
 	}
 
 	//placeholder
-	m.HandleFunc("/", handlePage(gueststore))
-	m.HandleFunc("/submit", submit(gueststore))
-	m.HandleFunc("/delete", delete(gueststore))
-	m.HandleFunc("/login", login())
-	m.HandleFunc("/loginauth", loginAuth(userstore))
-	m.HandleFunc("/signup", signup())
-	m.HandleFunc("/signupauth", signupAuth(userstore))
+	router.GET("/", handlePage(gueststore))
+	router.POST("/submit", submit(gueststore))
+	router.POST("/", delete(gueststore))
+	router.GET("/login", login())
+	router.POST("/login", loginAuth(userstore))
+	router.GET("/signup", signup())
+	router.POST("/signupauth", signupAuth(userstore))
 
-	srv := http.Server{
-		Handler:      m,
-		Addr:         *addr,
-		WriteTimeout: 30 * time.Second,
-		ReadTimeout:  30 * time.Second,
+	error := router.Run("localhost:8080")
+	if error != nil {
+		log.Fatal(error)
 	}
-
-	fmt.Println("server started on port", addr)
-	fmt.Println(time.Now())
-	error := srv.ListenAndServe()
-	log.Fatal(error)
 }
 
 // hands over Entries to Handler and prints them out in template
-func handlePage(s db.GuestBookStorage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		tmplt, _ = template.ParseFiles("index.html", "header.html", "content.html")
-		searchName := r.URL.Query().Get("q")
+func handlePage(s db.GuestBookStorage) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/content.html")
+		searchName := c.Query("q")
 		var entries []*model.GuestbookEntry
 		if searchName != "" {
 			entries, _ = s.GetEntryByName(searchName)
 		} else {
 			entries, _ = s.ListEntries()
 		}
-		err := tmplt.Execute(w, &entries)
+
+		err := tmplt.Execute(c.Writer, &entries)
 		if err != nil {
-			fmt.Println("error when executing template", err)
-			w.WriteHeader(http.StatusBadRequest)
+			c.String(http.StatusBadGateway, "error when executing template")
 			return
 		}
+
 	}
 }
 
 // submits guestbook entry (name, message)
-func submit(s db.GuestBookStorage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("method:", r.Method)
-		if r.Method == "GET" {
-			tmplt, _ := template.ParseFiles("index.html", "header.html", "content.html")
-			tmplt.Execute(w, nil)
-		} else {
-			r.ParseForm()
-			newEntry := model.GuestbookEntry{Name: r.FormValue("name"), Message: r.FormValue("message")}
-			if newEntry.Name == "" {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			s.CreateEntry(&newEntry)
-
+func submit(s db.GuestBookStorage) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Request.ParseForm()
+		newEntry := model.GuestbookEntry{Name: c.Request.FormValue("name"), Message: c.Request.FormValue("message")}
+		if newEntry.Name == "" {
+			return
 		}
-		http.Redirect(w, r, r.Header.Get("/"), 302)
+		s.CreateEntry(&newEntry)
+		c.Redirect(http.StatusFound, "/")
 	}
 }
 
-func delete(s db.GuestBookStorage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func delete(s db.GuestBookStorage) gin.HandlerFunc {
+	return func(c *gin.Context) {
 
-		r.ParseForm()
-		strUuid := r.Form.Get("Delete")
+		c.Request.ParseForm()
+		strUuid := c.Request.Form.Get("Delete")
 		uuidStr, _ := uuid.Parse(strUuid)
 
 		deleteEntry := model.GuestbookEntry{ID: uuidStr}
 		s.DeleteEntry(deleteEntry.ID)
-		http.Redirect(w, r, r.Header.Get("/"), 302)
+		c.Redirect(http.StatusFound, "/")
 
 	}
 }
 
 // show login Form
-func login() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tmplt, _ := template.ParseFiles("index.html", "header.html", "login.html")
-		err := tmplt.Execute(w, nil)
+func login() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/login.html")
+		err := tmplt.Execute(c.Writer, nil)
 		if err != nil {
-			fmt.Println("error when executing template", tmplt)
-			w.WriteHeader(http.StatusBadRequest)
+			c.String(http.StatusBadGateway, "error when executing template")
 			return
 		}
 	}
 }
 
 // show signup Form
-func signup() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tmplt, _ := template.ParseFiles("index.html", "header.html", "signup.html")
-		err := tmplt.Execute(w, nil)
+func signup() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/signup.html")
+		err := tmplt.Execute(c.Writer, nil)
 		if err != nil {
-			fmt.Println("error when executing template", tmplt)
-			w.WriteHeader(http.StatusBadRequest)
+			c.String(http.StatusBadGateway, "error when executing template")
 			return
 		}
 	}
 }
 
 // login authentication and check if user exists
-func loginAuth(u db.UserStorage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("loginHandler running")
-		r.ParseForm()
-		email := r.FormValue("email")
-		storedpassword, _ := u.GetHash(email)
-		if err := bcrypt.CompareHashAndPassword(storedpassword, []byte(r.FormValue("email"))); err != nil {
-			fmt.Println("error password is not matching", storedpassword)
-			fmt.Println("right hash:")
+func loginAuth(u db.UserStorage) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		//	c.Request.ParseForm()
+		email := c.PostForm("email")
+		storedpassword, error := u.GetHash(email)
+		if error != nil {
+			fmt.Println("cannot access right hashpassword", error)
 			return
 		}
-		fmt.Println("correct Password input", storedpassword)
+		if err := bcrypt.CompareHashAndPassword(storedpassword, []byte(c.PostForm("password"))); err != nil {
+			c.String(http.StatusUnauthorized, "your password/email doesn't match, please try again")
+			return
+		}
+		c.String(http.StatusAccepted, "User authorized")
 		//execute xyz
+		store := cookie.NewStore([]byte("secret"))
+
 	}
 }
 
 // signup authentication and validation of user input
-func signupAuth(u db.UserStorage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
-		err := jsondb.ValidateUserInput(r.Form)
+func signupAuth(u db.UserStorage) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Request.ParseForm()
+		err := jsondb.ValidateUserInput(c.Request.Form)
 		if err != nil {
 			fmt.Println("user form not valid:", err)
-			http.Redirect(w, r, "/signup", 302)
+			c.Redirect(http.StatusBadRequest, "/signup")
 			return
 		}
-		joinedName := strings.Join([]string{r.FormValue("firstname"), r.FormValue("lastname")}, " ")
-		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(r.Form.Get("password")), 14)
-		newUser := model.User{Email: r.FormValue("email"), Name: joinedName, Password: hashedpassword}
+		joinedName := strings.Join([]string{c.Request.FormValue("firstname"), c.Request.FormValue("lastname")}, " ")
+		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(c.Request.Form.Get("password")), 14)
+		newUser := model.User{Email: c.Request.FormValue("email"), Name: joinedName, Password: hashedpassword}
 		u.CreateUser(&newUser)
 	}
 }
