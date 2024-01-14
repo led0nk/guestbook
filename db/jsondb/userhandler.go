@@ -76,26 +76,17 @@ func (u *UserStorage) GetUserByEmail(email string) ([]*model.User, error) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	if email == "" {
-		return nil, errors.New("requires a name")
+		return nil, errors.New("requires an email input")
 	}
 
-	user := []*model.User{}
-
-	return user, nil
-}
-
-func (u *UserStorage) GetHash(email string) ([]byte, error) {
-	u.mu.Lock()
-	defer u.mu.Unlock()
-	var hashedpassword []byte
+	users := []*model.User{}
 	for _, user := range u.user {
 		if user.Email == email {
-			hashedpassword = user.Password
-			return hashedpassword, nil
+			users = append(users, user)
 		}
 	}
-	fmt.Println(hashedpassword)
-	return nil, errors.New("no matching users found for this email")
+
+	return users, nil
 }
 
 func ValidateUserInput(v url.Values) error {
@@ -115,7 +106,6 @@ func ValidateUserInput(v url.Values) error {
 	/*if strings.ContainsAny(v["password"][0], "[0-9]") == false {
 		return errors.New("password does not contain any numbers, please correct")
 	}*/
-
 	_, emailValid := mail.ParseAddress(v.Get("email"))
 	if emailValid != nil {
 		return errors.New("email is not in correct format, please try again")

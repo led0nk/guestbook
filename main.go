@@ -9,8 +9,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/sessions"
 	"github.com/led0nk/guestbook/db"
 	"github.com/led0nk/guestbook/db/jsondb"
 	"github.com/led0nk/guestbook/model"
@@ -18,6 +18,8 @@ import (
 
 	"github.com/google/uuid"
 )
+
+var cookies = sessions.NewCookieStore([]byte("secret"))
 
 func main() {
 	router := gin.Default()
@@ -29,7 +31,6 @@ func main() {
 		//userStr  = flag.String("userdata", "file://user.json", "link to user-database")
 	)
 	flag.Parse()
-
 	u, err := url.Parse(*entryStr)
 	if err != nil {
 		panic(err)
@@ -73,6 +74,18 @@ func handlePage(s db.GuestBookStorage) gin.HandlerFunc {
 			entries, _ = s.GetEntryByName(searchName)
 		} else {
 			entries, _ = s.ListEntries()
+		}
+
+		session, erro := cookies.Get(c.Request, "session")
+		session.Options = &sessions.Options{
+			Path:     "/",
+			MaxAge:   10,
+			HttpOnly: true,
+		}
+
+		if erro != nil {
+			c.String(http.StatusInternalServerError, "internal server error")
+			return
 		}
 
 		err := tmplt.Execute(c.Writer, &entries)
@@ -138,20 +151,43 @@ func signup() gin.HandlerFunc {
 // login authentication and check if user exists
 func loginAuth(u db.UserStorage) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		//	c.Request.ParseForm()
+
 		email := c.PostForm("email")
-		storedpassword, error := u.GetHash(email)
+		user, error := u.GetUserByEmail(email)
 		if error != nil {
 			fmt.Println("cannot access right hashpassword", error)
 			return
 		}
-		if err := bcrypt.CompareHashAndPassword(storedpassword, []byte(c.PostForm("password"))); err != nil {
+		if err := bcrypt.CompareHashAndPassword(user[0].Password, []byte(c.PostForm("password"))); err != nil {
 			c.String(http.StatusUnauthorized, "your password/email doesn't match, please try again")
 			return
 		}
 		c.String(http.StatusAccepted, "User authorized")
-		//execute xyz
-		store := cookie.NewStore([]byte("secret"))
+		session, err := cookies.Get(c.Request, "session")
+
+		session.Values["user"] = user[0].ID
+		fmt.Println(session.Values)
+		session.Save(c.Request, c.Writer)
+		c.String(http.StatusOK, "logged in and saved")
+		if err != nil {
+			c.String(http.StatusNotFound, "session not found")
+			return
+		}
+
+		// token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		// 	"user":       user[0].ID,
+		// 	"expiration": time.Now().Add(time.Hour * 24 * 30).Unix(),
+		// })
+
+		// tokenString, err := token.SignedString([]byte("top-secret-key"))
+		// if err != nil {
+		// 	c.String(http.StatusBadRequest, "Failed to create token")
+		// 	return
+		// }
+		// c.SetSameSite(http.SameSiteLaxMode)
+		// c.SetCookie("authorization", tokenString, 3600, "/", "", false, true)
+		// fmt.Println(c.Cookie("authorization"))
+		// c.String(http.StatusOK, tokenString)
 
 	}
 }
