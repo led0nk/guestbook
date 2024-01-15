@@ -15,5 +15,6 @@ type GuestBookStorage interface {
 
 type UserStorage interface {
 	CreateUser(*model.User) (uuid.UUID, error)
-	GetUserByEmail(string) ([]*model.User, error)
+	GetUserByEmail(string) (*model.User, error)
+	GetUserByID(uuid.UUID) (*model.User, error)
 }

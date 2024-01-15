@@ -1,0 +1,18 @@
+{{ define "content" }}
+
+<div class="flex justify-center items-center bg-slate-300  flex-1">
+    <div class="bg-white rounded-lg dark:bg-slate-800 w-1/2 p-6">
+        {{ .ID }}
+        <h1 class="text-slate-900 dark:text-white mt-1 text-base font-semibold tracking-tight
+        border-b dark:border-gray-100/10 border-gray-900/10">Personal Data:</h1>
+        
+        {{ .Name }}
+        
+        {{ .Email }}
+
+    </div>
+
+</div> 
+
+
+{{ end }}

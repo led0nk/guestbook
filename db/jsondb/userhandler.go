@@ -72,20 +72,52 @@ func (u *UserStorage) CreateUser(user *model.User) (uuid.UUID, error) {
 	return user.ID, nil
 }
 
-func (u *UserStorage) GetUserByEmail(email string) ([]*model.User, error) {
+// func (u *UserStorage) GetUserByMail(email string) ([]*model.User, error) {
+// 	u.mu.Lock()
+// 	defer u.mu.Unlock()
+// 	if email == "" {
+// 		return nil, errors.New("requires an email input")
+// 	}
+
+// 	users := []*model.User{}
+// 	for _, user := range u.user {
+// 		if user.Email == email {
+// 			users = append(users, user)
+// 		}
+// 	}
+
+// 	return users, nil
+// }
+
+func (u *UserStorage) GetUserByEmail(email string) (*model.User, error) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	if email == "" {
 		return nil, errors.New("requires an email input")
 	}
 
-	users := []*model.User{}
+	users := &model.User{}
 	for _, user := range u.user {
 		if user.Email == email {
-			users = append(users, user)
+			users = user
 		}
 	}
+	return users, nil
+}
 
+func (u *UserStorage) GetUserByID(ID uuid.UUID) (*model.User, error) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if ID == uuid.Nil {
+		return nil, errors.New("UUID empty")
+	}
+
+	users := &model.User{}
+	for _, user := range u.user {
+		if user.ID == ID {
+			users = user
+		}
+	}
 	return users, nil
 }
 

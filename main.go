@@ -49,14 +49,19 @@ func main() {
 		panic("bad storage")
 	}
 
+	authRouter := router.Group("/user", auth)
+
 	//placeholder
 	router.GET("/", handlePage(gueststore))
 	router.POST("/submit", submit(gueststore))
 	router.POST("/", delete(gueststore))
-	router.GET("/login", login())
+	router.GET("/login", loginHandler())
 	router.POST("/login", loginAuth(userstore))
-	router.GET("/signup", signup())
+	router.GET("/search", searchHandler())
+	router.GET("/logout", logout(userstore))
+	router.GET("/signup", signupHandler())
 	router.POST("/signupauth", signupAuth(userstore))
+	authRouter.GET("/dashboard", dashboardHandler(userstore))
 
 	error := router.Run("localhost:8080")
 	if error != nil {
@@ -75,34 +80,6 @@ func handlePage(s db.GuestBookStorage) gin.HandlerFunc {
 		} else {
 			entries, _ = s.ListEntries()
 		}
-
-		session, erro := cookies.Get(c.Request, "session")
-		session.Options = &sessions.Options{
-			Path:     "/",
-			MaxAge:   10,
-			HttpOnly: true,
-			SameSite: http.SameSiteLaxMode,
-		}
-
-		if erro != nil {
-			c.String(http.StatusInternalServerError, "internal server error")
-			return
-		}
-
-		session, erros := cookies.Get(c.Request, "session")
-		if erros != nil {
-			return
-		}
-		session.Options = &sessions.Options{
-			Path:     "/",
-			MaxAge:   60,
-			HttpOnly: true,
-		}
-		session.Values["user"] = "user[0].ID"
-
-		fmt.Println(session.Values)
-		session.Save(c.Request, c.Writer)
-
 		err := tmplt.Execute(c.Writer, &entries)
 		if err != nil {
 			c.String(http.StatusBadGateway, "error when executing template")
@@ -139,8 +116,20 @@ func delete(s db.GuestBookStorage) gin.HandlerFunc {
 	}
 }
 
+func searchHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/search.html")
+
+		err := tmplt.Execute(c.Writer, nil)
+		if err != nil {
+			c.String(http.StatusBadGateway, "error when executing template")
+			return
+		}
+	}
+}
+
 // show login Form
-func login() gin.HandlerFunc {
+func loginHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/login.html")
 		err := tmplt.Execute(c.Writer, nil)
@@ -152,7 +141,7 @@ func login() gin.HandlerFunc {
 }
 
 // show signup Form
-func signup() gin.HandlerFunc {
+func signupHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/signup.html")
 		err := tmplt.Execute(c.Writer, nil)
@@ -166,51 +155,82 @@ func signup() gin.HandlerFunc {
 // login authentication and check if user exists
 func loginAuth(u db.UserStorage) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/user.html")
 		email := c.PostForm("email")
 		user, error := u.GetUserByEmail(email)
 		if error != nil {
 			fmt.Println("cannot access right hashpassword", error)
 			return
 		}
-		if err := bcrypt.CompareHashAndPassword(user[0].Password, []byte(c.PostForm("password"))); err != nil {
+
+		if err := bcrypt.CompareHashAndPassword(user.Password, []byte(c.PostForm("password"))); err != nil {
 			c.String(http.StatusUnauthorized, "your password/email doesn't match, please try again")
 			return
 		}
-
 		session, errcookie := cookies.Get(c.Request, "session")
-
-		session.Values["user"] = user[0].ID
-		session.Values["name"] = user[0].Name
+		if errcookie != nil {
+			c.String(http.StatusBadRequest, "session could not be decoded")
+			return
+		}
+		session.Options = &sessions.Options{
+			Path:     "/",
+			MaxAge:   600,
+			HttpOnly: true,
+		}
+		session.Values["ID"] = user.ID.String()
 		session.Save(c.Request, c.Writer)
 
-		if errcookie != nil {
-			c.String(http.StatusNotFound, "session not found")
-			return
-		}
-		emptyname, _ := session.Values["name"]
-		name, _ := emptyname.(string)
-		fmt.Println(name)
-		err := tmplt.Execute(c.Writer, name)
-		if err != nil {
-			c.String(http.StatusBadGateway, "error when executing template")
-			return
-		}
-		// token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		// 	"user":       user[0].ID,
-		// 	"expiration": time.Now().Add(time.Hour * 24 * 30).Unix(),
-		// })
+		c.Redirect(http.StatusFound, "/user/dashboard")
+	}
+}
 
-		// tokenString, err := token.SignedString([]byte("top-secret-key"))
-		// if err != nil {
-		// 	c.String(http.StatusBadRequest, "Failed to create token")
+func auth(c *gin.Context) {
+	session, err := cookies.Get(c.Request, "session")
+	if err != nil {
+		c.String(http.StatusBadRequest, "session could not be decoded")
+		return
+	}
+	_, exists := session.Values["ID"]
+	if !exists {
+		c.Redirect(http.StatusFound, "/login")
+		c.Abort()
+		return
+	}
+	fmt.Println("middleware done")
+	c.Next()
+
+}
+
+func logout(u db.UserStorage) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		session, err := cookies.Get(c.Request, "session")
+		if err != nil {
+			c.String(http.StatusBadRequest, "session could not be decoded")
+			return
+		}
+		session.Options.MaxAge = -1
+		session.Save(c.Request, c.Writer)
+		c.Redirect(http.StatusFound, "/login")
+	}
+
+}
+
+func dashboardHandler(u db.UserStorage) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/dashboard.html")
+		session, _ := cookies.Get(c.Request, "session")
+		// user := &model.User{}
+		// val := session.Values["ID"]
+		// fmt.Println(val)
+		// var match bool
+		// if user, match = val.(*model.User); !match {
+		// 	fmt.Println("was not type of model.User")
 		// 	return
 		// }
-		// c.SetSameSite(http.SameSiteLaxMode)
-		// c.SetCookie("authorization", tokenString, 3600, "/", "", false, true)
-		// fmt.Println(c.Cookie("authorization"))
-		// c.String(http.StatusOK, tokenString)
-
+		userID := session.Values["ID"]
+		userIDStr := userID.(string)
+		ID, _ := uuid.Parse(userIDStr)
+		user, _ := u.GetUserByID(ID)
+		tmplt.Execute(c.Writer, user)
 	}
 }
 
