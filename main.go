@@ -81,12 +81,27 @@ func handlePage(s db.GuestBookStorage) gin.HandlerFunc {
 			Path:     "/",
 			MaxAge:   10,
 			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
 		}
 
 		if erro != nil {
 			c.String(http.StatusInternalServerError, "internal server error")
 			return
 		}
+
+		session, erros := cookies.Get(c.Request, "session")
+		if erros != nil {
+			return
+		}
+		session.Options = &sessions.Options{
+			Path:     "/",
+			MaxAge:   60,
+			HttpOnly: true,
+		}
+		session.Values["user"] = "user[0].ID"
+
+		fmt.Println(session.Values)
+		session.Save(c.Request, c.Writer)
 
 		err := tmplt.Execute(c.Writer, &entries)
 		if err != nil {
@@ -151,7 +166,7 @@ func signup() gin.HandlerFunc {
 // login authentication and check if user exists
 func loginAuth(u db.UserStorage) gin.HandlerFunc {
 	return func(c *gin.Context) {
-
+		tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/user.html")
 		email := c.PostForm("email")
 		user, error := u.GetUserByEmail(email)
 		if error != nil {
@@ -162,18 +177,25 @@ func loginAuth(u db.UserStorage) gin.HandlerFunc {
 			c.String(http.StatusUnauthorized, "your password/email doesn't match, please try again")
 			return
 		}
-		c.String(http.StatusAccepted, "User authorized")
-		session, err := cookies.Get(c.Request, "session")
+
+		session, errcookie := cookies.Get(c.Request, "session")
 
 		session.Values["user"] = user[0].ID
-		fmt.Println(session.Values)
+		session.Values["name"] = user[0].Name
 		session.Save(c.Request, c.Writer)
-		c.String(http.StatusOK, "logged in and saved")
-		if err != nil {
+
+		if errcookie != nil {
 			c.String(http.StatusNotFound, "session not found")
 			return
 		}
-
+		emptyname, _ := session.Values["name"]
+		name, _ := emptyname.(string)
+		fmt.Println(name)
+		err := tmplt.Execute(c.Writer, name)
+		if err != nil {
+			c.String(http.StatusBadGateway, "error when executing template")
+			return
+		}
 		// token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		// 	"user":       user[0].ID,
 		// 	"expiration": time.Now().Add(time.Hour * 24 * 30).Unix(),
