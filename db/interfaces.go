@@ -11,6 +11,7 @@ type GuestBookStorage interface {
 	ListEntries() ([]*model.GuestbookEntry, error)
 	DeleteEntry(uuid.UUID) error
 	GetEntryByName(string) ([]*model.GuestbookEntry, error)
+	GetEntryByID(uuid.UUID) ([]*model.GuestbookEntry, error)
 }
 
 type UserStorage interface {

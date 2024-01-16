@@ -131,5 +131,27 @@ func (b *BookStorage) GetEntryByName(name string) ([]*model.GuestbookEntry, erro
 	if len(entries) == 0 {
 		return nil, errors.New("no entries found for " + name)
 	}
+
+	sort.Slice(entries, func(i, j int) bool { return entries[i].CreatedAt > entries[j].CreatedAt })
+	return entries, nil
+}
+
+func (b *BookStorage) GetEntryByID(id uuid.UUID) ([]*model.GuestbookEntry, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if id == uuid.Nil {
+		return nil, errors.New("requires a uuid")
+	}
+
+	entries := []*model.GuestbookEntry{}
+	for _, entry := range b.entries {
+		if entry.UserID == id {
+			entries = append(entries, entry)
+		}
+	}
+	if len(entries) == 0 {
+		return nil, errors.New("no entries found for ")
+
+	}
 	return entries, nil
 }

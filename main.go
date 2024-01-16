@@ -61,7 +61,7 @@ func main() {
 	router.GET("/logout", logout(userstore))
 	router.GET("/signup", signupHandler())
 	router.POST("/signupauth", signupAuth(userstore))
-	authRouter.GET("/dashboard", dashboardHandler(userstore))
+	authRouter.GET("/dashboard", dashboardHandler(userstore, gueststore))
 
 	error := router.Run("localhost:8080")
 	if error != nil {
@@ -214,22 +214,21 @@ func logout(u db.UserStorage) gin.HandlerFunc {
 
 }
 
-func dashboardHandler(u db.UserStorage) gin.HandlerFunc {
+func dashboardHandler(u db.UserStorage, b db.GuestBookStorage) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/dashboard.html")
 		session, _ := cookies.Get(c.Request, "session")
-		// user := &model.User{}
-		// val := session.Values["ID"]
-		// fmt.Println(val)
-		// var match bool
-		// if user, match = val.(*model.User); !match {
-		// 	fmt.Println("was not type of model.User")
-		// 	return
-		// }
-		userID := session.Values["ID"]
-		userIDStr := userID.(string)
-		ID, _ := uuid.Parse(userIDStr)
-		user, _ := u.GetUserByID(ID)
+		sessionUserID := session.Values["ID"].(string)
+		userID, _ := uuid.Parse(sessionUserID)
+
+		user, err := u.GetUserByID(userID)
+		if err != nil {
+			c.Redirect(http.StatusFound, "/login")
+			return
+		}
+
+		user.Entry, _ = b.GetEntryByID(user.ID)
+		fmt.Println(user.Entry)
 		tmplt.Execute(c.Writer, user)
 	}
 }

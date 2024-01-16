@@ -72,23 +72,6 @@ func (u *UserStorage) CreateUser(user *model.User) (uuid.UUID, error) {
 	return user.ID, nil
 }
 
-// func (u *UserStorage) GetUserByMail(email string) ([]*model.User, error) {
-// 	u.mu.Lock()
-// 	defer u.mu.Unlock()
-// 	if email == "" {
-// 		return nil, errors.New("requires an email input")
-// 	}
-
-// 	users := []*model.User{}
-// 	for _, user := range u.user {
-// 		if user.Email == email {
-// 			users = append(users, user)
-// 		}
-// 	}
-
-// 	return users, nil
-// }
-
 func (u *UserStorage) GetUserByEmail(email string) (*model.User, error) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
@@ -135,9 +118,7 @@ func ValidateUserInput(v url.Values) error {
 	if len(v["password"][0]) < 8 || len(v["password"][1]) < 8 {
 		return errors.New("password is too short, should be at least 8 characters long")
 	}
-	/*if strings.ContainsAny(v["password"][0], "[0-9]") == false {
-		return errors.New("password does not contain any numbers, please correct")
-	}*/
+
 	_, emailValid := mail.ParseAddress(v.Get("email"))
 	if emailValid != nil {
 		return errors.New("email is not in correct format, please try again")

@@ -9,4 +9,5 @@ type GuestbookEntry struct {
 	Name      string    `json:"name"`
 	Message   string    `json:"message"`
 	CreatedAt string    `json:"created_at"`
+	UserID    uuid.UUID `json:"userid" form:"-"`
 }
