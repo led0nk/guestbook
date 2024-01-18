@@ -6,19 +6,16 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"text/template"
 
-	"log"
-	"log/slog"
-
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/led0nk/guestbook/db"
 	"github.com/led0nk/guestbook/db/jsondb"
 	"github.com/led0nk/guestbook/model"
+	"github.com/led0nk/guestbook/token"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/google/uuid"
@@ -27,8 +24,13 @@ import (
 var cookies = sessions.NewCookieStore([]byte("secret"))
 
 func main() {
+	log.SetFormatter(&log.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: "2006/01/02 15:04:05",
+	})
+
 	router := mux.NewRouter()
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
 	var (
 		//addr     = flag.String("addr", "localhost:8080", "server port")
 		entryStr = flag.String("entrydata", "file://entries.json", "link to entry-database")
@@ -39,52 +41,91 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	log.Print(u)
+	log.Info(u)
 	var gueststore db.GuestBookStorage
 	var userstore db.UserStorage
+	var tokenservice token.TokenService
 	switch u.Scheme {
 	case "file":
-		log.Println("opening:", u.Hostname())
+		log.Info("opening:", u.Hostname())
 		bookStorage, _ := jsondb.CreateBookStorage("./entries.json")
 		userStorage, _ := jsondb.CreateUserStorage("./user.json")
+		tokenStorage, _ := token.CreateTokenService()
 		gueststore = bookStorage
 		userstore = userStorage
+		tokenservice = tokenStorage
 	default:
 		panic("bad storage")
 	}
 	//logMiddleware := mux.NewRouter()
 	authMiddleware := mux.NewRouter().PathPrefix("/user").Subrouter()
-	authMiddleware.Use(auth)
+	authMiddleware.Use(authHandler)
 	router.Use(logHandler)
 	router.PathPrefix("/user").Handler(authMiddleware)
-	//placeholder
+	//routing
 	router.HandleFunc("/", handlePage(gueststore)).Methods(http.MethodGet)
 	router.HandleFunc("/submit", submit(gueststore)).Methods(http.MethodPost)
 	router.HandleFunc("/", delete(gueststore)).Methods(http.MethodPost)
 	router.HandleFunc("/login", loginHandler()).Methods(http.MethodGet)
-	router.HandleFunc("/login", loginAuth(userstore)).Methods(http.MethodPost)
+	router.HandleFunc("/login", loginAuth(tokenservice, userstore)).Methods(http.MethodPost)
 	router.HandleFunc("/search", searchHandler()).Methods(http.MethodGet)
 	router.HandleFunc("/logout", logout(userstore)).Methods(http.MethodGet)
 	router.HandleFunc("/signup", signupHandler()).Methods(http.MethodGet)
 	router.HandleFunc("/signupauth", signupAuth(userstore)).Methods(http.MethodPost)
-	authMiddleware.HandleFunc("/dashboard", dashboardHandler(userstore, gueststore)).Methods(http.MethodGet)
-	router.HandleFunc("/create", createHandler()).Methods(http.MethodGet)
-	router.HandleFunc("/create", createEntry(userstore, gueststore)).Methods(http.MethodPost)
-
-	log.Println("listening")
-	logger.Info("Info")
-	logger.Error("Error")
+	//routing through authentication via /user
+	authMiddleware.HandleFunc("/dashboard", dashboardHandler(tokenservice, userstore, gueststore)).Methods(http.MethodGet)
+	authMiddleware.HandleFunc("/create", createHandler()).Methods(http.MethodGet)
+	authMiddleware.HandleFunc("/create", createEntry(userstore, gueststore)).Methods(http.MethodPost)
+	log.Info("listening to: ")
 	serverr := http.ListenAndServe(":8080", router)
 	if err != nil {
 		log.Fatal(serverr)
 	}
 }
 
+// logging middleware
 func logHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Request URL:", "\033[1m", r.URL, "\033[0m", "Method:", r.Method)
-		// logger.Info("test")
-		// logger.Error("Error")
+		var arrow string
+		switch r.Method {
+		case http.MethodPost:
+			post := " <----- "
+			arrow = post
+		default:
+			others := " -----> "
+			arrow = others
+		}
+		log.Info(r.URL, arrow, "["+r.Method+"]")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// authentication middleware, check for session values -> redirect
+func authHandler(t token.TokenService, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		session, err := r.Cookie("session")
+		if err != nil {
+			log.Error("there are no cookies of type session")
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+		exists := session.Value
+		if exists == "" {
+			log.Info("authentication failed, no tokens available for session")
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+		isValid, exp, err := t.Valid(session.Value, session.Expires)
+		if !isValid {
+			log.Error("invalid Token", err)
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+
+		session.Expires = exp
+		http.SetCookie(w, session)
+
+		log.Info("authentication successfull")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -173,7 +214,7 @@ func signupHandler() http.HandlerFunc {
 }
 
 // login authentication and check if user exists
-func loginAuth(u db.UserStorage) http.HandlerFunc {
+func loginAuth(t token.TokenService, u db.UserStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		email := r.FormValue("email")
 		user, error := u.GetUserByEmail(email)
@@ -186,44 +227,26 @@ func loginAuth(u db.UserStorage) http.HandlerFunc {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"id": "1234",
-		})
-		tokenString, _ := token.SignedString([]byte("secret"))
-
+		tokenString, tokenExpire, err := t.CreateToken(user.ID)
+		log.Info(tokenExpire)
+		if err != nil {
+			log.Error(err)
+			return
+		}
 		cookie := http.Cookie{
-			Name:     "session",
-			Value:    tokenString,
-			Path:     "/",
-			MaxAge:   3600,
+			Name:    "session",
+			Value:   tokenString,
+			Path:    "/",
+			Expires: tokenExpire,
+			//MaxAge:   3600,
 			HttpOnly: true,
 			Secure:   true,
 			SameSite: http.SameSiteLaxMode,
 		}
 
 		http.SetCookie(w, &cookie)
-		http.Redirect(w, r, "/dashboard", http.StatusFound)
+		http.Redirect(w, r, "/user/dashboard", http.StatusFound)
 	}
-}
-
-// authentication middleware, check for session values -> redirect
-func auth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// session, err := cookies.Get(r, "session")
-		// if err != nil {
-		// 	w.WriteHeader(http.StatusBadRequest)
-		// 	return
-		// }
-		// _, exists := session.Values["ID"]
-		// if !exists {
-		// }
-		// // 	http.Redirect(w, r, "/login", http.StatusFound)
-
-		// // 	return
-		// // }
-		fmt.Println("middleware done")
-		next.ServeHTTP(w, r)
-	})
 }
 
 // logout and deleting session-cookie
@@ -246,21 +269,30 @@ func logout(u db.UserStorage) http.HandlerFunc {
 	}
 }
 
-func dashboardHandler(u db.UserStorage, b db.GuestBookStorage) http.HandlerFunc {
+func dashboardHandler(t token.TokenService, u db.UserStorage, b db.GuestBookStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/dashboard.html")
-		// session, _ := cookies.Get(r, "session")
-		// sessionUserID := session.Values["ID"].(string)
-		// userID, _ := uuid.Parse(sessionUserID)
 
-		// user, err := u.GetUserByID(userID)
-		// if err != nil {
-		// 	http.Redirect(w, r, "/login", http.StatusFound)
-		// 	return
-		// }
+		session, _ := r.Cookie("session")
+		tokenValue, _ := t.GetTokenValue(session)
+		user, _ := u.GetUserByID(tokenValue)
+		log.Info(tokenValue)
 
-		//user.Entry, _ = b.GetEntryByID(user.ID)
-		tmplt.Execute(w, nil)
+		tmplt.Execute(w, user)
+	}
+}
+
+func testHandler(t token.TokenService, u db.UserStorage, b db.GuestBookStorage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/dashboard.html")
+
+		session, _ := r.Cookie("session")
+		tokenValue, _ := t.GetTokenValue(session)
+
+		user, _ := u.GetUserByID(tokenValue)
+		log.Info(tokenValue)
+
+		tmplt.Execute(w, user)
 	}
 }
 

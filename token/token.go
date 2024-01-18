@@ -2,11 +2,20 @@ package token
 
 import (
 	"errors"
+	"net/http"
 	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
+
+type TokenService interface {
+	CreateToken(uuid.UUID) (string, time.Time, error)
+	DeleteToken(uuid.UUID) error
+	GetTokenValue(*http.Cookie) (uuid.UUID, error)
+	Valid(string, time.Time) (bool, time.Time, error)
+}
 
 type Token struct {
 	Token      *jwt.Token
@@ -14,42 +23,90 @@ type Token struct {
 }
 
 type TokenStorage struct {
-	Token map[string]*Token
-	mu    sync.Mutex
+	Tokens map[uuid.UUID]*Token
+	mu     sync.Mutex
 }
 
-func CreateTokenStorage() (*TokenStorage, error) {
-	tokenStorage := &TokenStorage{
-		Token: make(map[string]*Token),
+func CreateTokenService() (*TokenStorage, error) {
+	tokenService := &TokenStorage{
+		Tokens: make(map[uuid.UUID]*Token),
 	}
-	return tokenStorage, nil
+	return tokenService, nil
 }
 
-func (t *TokenStorage) CreateToken(ID string) (string, error) {
+func (t *TokenStorage) CreateToken(ID uuid.UUID) (string, time.Time, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if ID == "" {
-		return "", errors.New("Cannot create Token for empty User ID")
+	if ID == uuid.Nil {
+		return "", time.Now(), errors.New("Cannot create Token for empty User ID")
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id": ID,
+		"id": ID.String(),
 	})
 	tokenString, _ := token.SignedString([]byte("secret")) //exchange to osenv later
+	expiration := time.Now().Add(15 * time.Minute)
+	tokenStruct := &Token{
+		Token:      token,
+		Expiration: expiration,
+	}
 
-	return tokenString, nil
+	t.Tokens[ID] = tokenStruct
+
+	return tokenString, expiration, nil
 }
 
-func (t *TokenStorage) DeleteToken(ID string) error {
+func (t *TokenStorage) DeleteToken(ID uuid.UUID) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if ID == "" {
+	if ID == uuid.Nil {
 		return errors.New("Cannot delete Token for empty User ID")
 	}
 
-	if _, exists := t.Token[ID]; !exists {
+	if _, exists := t.Tokens[ID]; !exists {
 		return errors.New("there is no token existing for this ID")
 	}
-	delete(t.Token, ID)
+	delete(t.Tokens, ID)
 	return nil
+}
+
+func (t *TokenStorage) GetTokenValue(c *http.Cookie) (uuid.UUID, error) {
+	tokenString := c.Value
+	claims := jwt.MapClaims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte("secret"), nil
+	})
+	if err != nil {
+		return uuid.Nil, err
+	}
+	tokenClaims, _ := token.Claims.(jwt.MapClaims)
+	valueString := tokenClaims["id"].(string)
+	tokenValue, _ := uuid.Parse(valueString)
+
+	return tokenValue, nil
+
+}
+func (t *TokenStorage) Valid(val string, exp time.Time) (bool, time.Time, error) {
+
+	claims := jwt.MapClaims{}
+	realtoken, err := jwt.ParseWithClaims(val, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte("secret"), nil
+	})
+	if err != nil {
+		return false, time.Time{}, err
+	}
+
+	for _, token := range t.Tokens {
+		if token.Token == realtoken {
+			if token.Expiration.Before(exp) {
+				return false, time.Time{}, errors.New("token expiration timers are different, ALARM!")
+			}
+			if exp.After(time.Now()) {
+				exp = time.Now().Add(15 * time.Minute)
+			}
+			return true, exp, nil
+		}
+	}
+
+	return false, time.Time{}, errors.New("Token was not found")
 }
