@@ -23,12 +23,19 @@ import (
 
 var cookies = sessions.NewCookieStore([]byte("secret"))
 
+type Store struct {
+	bookstore  db.GuestBookStore
+	userstore  db.UserStore
+	tokenstore db.TokenStore
+}
+
 func main() {
+
 	log.SetFormatter(&log.TextFormatter{
 		FullTimestamp:   true,
 		TimestampFormat: "2006/01/02 15:04:05",
 	})
-
+	log.SetLevel(log.DebugLevel)
 	router := mux.NewRouter()
 
 	var (
@@ -42,40 +49,48 @@ func main() {
 		panic(err)
 	}
 	log.Info(u)
-	var gueststore db.GuestBookStorage
-	var userstore db.UserStorage
-	var tokenservice token.TokenService
+	var guestbookStore db.GuestBookStore
+	var userStore db.UserStore
+	var tokenStore db.TokenStore
 	switch u.Scheme {
 	case "file":
 		log.Info("opening:", u.Hostname())
 		bookStorage, _ := jsondb.CreateBookStorage("./entries.json")
 		userStorage, _ := jsondb.CreateUserStorage("./user.json")
 		tokenStorage, _ := token.CreateTokenService()
-		gueststore = bookStorage
-		userstore = userStorage
-		tokenservice = tokenStorage
+		guestbookStore = bookStorage
+		userStore = userStorage
+		tokenStore = tokenStorage
+
 	default:
 		panic("bad storage")
 	}
+
+	storeHandler := Store{
+		bookstore:  guestbookStore,
+		userstore:  userStore,
+		tokenstore: tokenStore,
+	}
+
 	//logMiddleware := mux.NewRouter()
 	authMiddleware := mux.NewRouter().PathPrefix("/user").Subrouter()
-	authMiddleware.Use(authHandler)
+	authMiddleware.Use(storeHandler.authHandler)
 	router.Use(logHandler)
 	router.PathPrefix("/user").Handler(authMiddleware)
 	//routing
-	router.HandleFunc("/", handlePage(gueststore)).Methods(http.MethodGet)
-	router.HandleFunc("/submit", submit(gueststore)).Methods(http.MethodPost)
-	router.HandleFunc("/", delete(gueststore)).Methods(http.MethodPost)
-	router.HandleFunc("/login", loginHandler()).Methods(http.MethodGet)
-	router.HandleFunc("/login", loginAuth(tokenservice, userstore)).Methods(http.MethodPost)
-	router.HandleFunc("/search", searchHandler()).Methods(http.MethodGet)
-	router.HandleFunc("/logout", logout(userstore)).Methods(http.MethodGet)
-	router.HandleFunc("/signup", signupHandler()).Methods(http.MethodGet)
-	router.HandleFunc("/signupauth", signupAuth(userstore)).Methods(http.MethodPost)
+	router.HandleFunc("/", storeHandler.handlePage()).Methods(http.MethodGet)
+	router.HandleFunc("/submit", storeHandler.submit).Methods(http.MethodPost)
+	router.HandleFunc("/", storeHandler.delete()).Methods(http.MethodPost)
+	router.HandleFunc("/login", storeHandler.loginHandler).Methods(http.MethodGet)
+	router.HandleFunc("/login", storeHandler.loginAuth()).Methods(http.MethodPost)
+	router.HandleFunc("/search", storeHandler.searchHandler).Methods(http.MethodGet)
+	router.HandleFunc("/logout", storeHandler.logout()).Methods(http.MethodGet)
+	router.HandleFunc("/signup", storeHandler.signupHandler).Methods(http.MethodGet)
+	router.HandleFunc("/signupauth", storeHandler.signupAuth()).Methods(http.MethodPost)
 	//routing through authentication via /user
-	authMiddleware.HandleFunc("/dashboard", dashboardHandler(tokenservice, userstore, gueststore)).Methods(http.MethodGet)
-	authMiddleware.HandleFunc("/create", createHandler()).Methods(http.MethodGet)
-	authMiddleware.HandleFunc("/create", createEntry(userstore, gueststore)).Methods(http.MethodPost)
+	authMiddleware.HandleFunc("/dashboard", storeHandler.dashboardHandler()).Methods(http.MethodGet)
+	authMiddleware.HandleFunc("/create", createHandler).Methods(http.MethodGet)
+	authMiddleware.HandleFunc("/create", storeHandler.createEntry()).Methods(http.MethodPost)
 	log.Info("listening to: ")
 	serverr := http.ListenAndServe(":8080", router)
 	if err != nil {
@@ -83,10 +98,25 @@ func main() {
 	}
 }
 
+type ResponseRecorder struct {
+	http.ResponseWriter
+	StatusCode int
+}
+
+func (rec *ResponseRecorder) WriteHeader(statusCode int) {
+	rec.StatusCode = statusCode
+	rec.ResponseWriter.WriteHeader(statusCode)
+}
+
 // logging middleware
 func logHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var arrow string
+		rec := &ResponseRecorder{
+			ResponseWriter: w,
+			StatusCode:     http.StatusOK,
+		}
+
 		switch r.Method {
 		case http.MethodPost:
 			post := " <----- "
@@ -95,13 +125,13 @@ func logHandler(next http.Handler) http.Handler {
 			others := " -----> "
 			arrow = others
 		}
-		log.Info(r.URL, arrow, "["+r.Method+"]")
-		next.ServeHTTP(w, r)
+		log.Info("[", rec.StatusCode, "]", r.URL, arrow, "["+r.Method+"]") //StatusCode in progress, not working yet
+		next.ServeHTTP(rec, r)
 	})
 }
 
 // authentication middleware, check for session values -> redirect
-func authHandler(t token.TokenService, next http.Handler) http.Handler {
+func (s *Store) authHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		session, err := r.Cookie("session")
 		if err != nil {
@@ -115,31 +145,37 @@ func authHandler(t token.TokenService, next http.Handler) http.Handler {
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
-		isValid, exp, err := t.Valid(session.Value, session.Expires)
+
+		isValid, err := s.tokenstore.Valid(session.Value)
 		if !isValid {
-			log.Error("invalid Token", err)
+			log.Error("Tokenerror: ", err)
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
 
-		session.Expires = exp
-		http.SetCookie(w, session)
+		cookie, err := s.tokenstore.Refresh(session.Value)
+		if err != nil {
+			log.Error("Error Refreshing: ", err)
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		}
 
-		log.Info("authentication successfull")
+		http.SetCookie(w, cookie)
+		log.Info("authMiddleware done")
 		next.ServeHTTP(w, r)
 	})
 }
 
 // hands over Entries to Handler and prints them out in template
-func handlePage(s db.GuestBookStorage) http.HandlerFunc {
+func (s *Store) handlePage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/content.html")
 		searchName := r.URL.Query().Get("q")
 		var entries []*model.GuestbookEntry
 		if searchName != "" {
-			entries, _ = s.GetEntryByName(searchName)
+			entries, _ = s.bookstore.GetEntryByName(searchName)
 		} else {
-			entries, _ = s.ListEntries()
+			entries, _ = s.bookstore.ListEntries()
 		}
 		err := tmplt.Execute(w, &entries)
 		if err != nil {
@@ -151,19 +187,17 @@ func handlePage(s db.GuestBookStorage) http.HandlerFunc {
 }
 
 // submits guestbook entry (name, message)
-func submit(s db.GuestBookStorage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
-		newEntry := model.GuestbookEntry{Name: r.FormValue("name"), Message: r.FormValue("message")}
-		if newEntry.Name == "" {
-			return
-		}
-		s.CreateEntry(&newEntry)
-		http.Redirect(w, r, "/", http.StatusFound)
+func (s *Store) submit(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	newEntry := model.GuestbookEntry{Name: r.FormValue("name"), Message: r.FormValue("message")}
+	if newEntry.Name == "" {
+		return
 	}
+	s.bookstore.CreateEntry(&newEntry)
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-func delete(s db.GuestBookStorage) http.HandlerFunc {
+func (s *Store) delete() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		r.ParseForm()
@@ -171,53 +205,47 @@ func delete(s db.GuestBookStorage) http.HandlerFunc {
 		uuidStr, _ := uuid.Parse(strUuid)
 
 		deleteEntry := model.GuestbookEntry{ID: uuidStr}
-		s.DeleteEntry(deleteEntry.ID)
+		s.bookstore.DeleteEntry(deleteEntry.ID)
 		http.Redirect(w, r, "/", http.StatusFound)
 
 	}
 }
 
-func searchHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/search.html")
+func (s *Store) searchHandler(w http.ResponseWriter, r *http.Request) {
+	tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/search.html")
 
-		err := tmplt.Execute(w, nil)
-		if err != nil {
-			w.WriteHeader(http.StatusBadGateway)
-			return
-		}
+	err := tmplt.Execute(w, nil)
+	if err != nil {
+		w.WriteHeader(http.StatusBadGateway)
+		return
 	}
 }
 
 // show login Form
-func loginHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/login.html")
-		err := tmplt.Execute(w, nil)
-		if err != nil {
-			w.WriteHeader(http.StatusBadGateway)
-			return
-		}
+func (s *Store) loginHandler(w http.ResponseWriter, r *http.Request) {
+	tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/login.html")
+	err := tmplt.Execute(w, nil)
+	if err != nil {
+		w.WriteHeader(http.StatusBadGateway)
+		return
 	}
 }
 
 // show signup Form
-func signupHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/signup.html")
-		err := tmplt.Execute(w, nil)
-		if err != nil {
-			w.WriteHeader(http.StatusBadGateway)
-			return
-		}
+func (s *Store) signupHandler(w http.ResponseWriter, r *http.Request) {
+	tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/signup.html")
+	err := tmplt.Execute(w, nil)
+	if err != nil {
+		w.WriteHeader(http.StatusBadGateway)
+		return
 	}
 }
 
 // login authentication and check if user exists
-func loginAuth(t token.TokenService, u db.UserStorage) http.HandlerFunc {
+func (s *Store) loginAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		email := r.FormValue("email")
-		user, error := u.GetUserByEmail(email)
+		user, error := s.userstore.GetUserByEmail(email)
 		if error != nil {
 			fmt.Println("cannot access right hashpassword", error)
 			return
@@ -227,30 +255,20 @@ func loginAuth(t token.TokenService, u db.UserStorage) http.HandlerFunc {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		tokenString, tokenExpire, err := t.CreateToken(user.ID)
-		log.Info(tokenExpire)
+
+		cookie, err := s.tokenstore.CreateToken(user.ID)
 		if err != nil {
 			log.Error(err)
 			return
 		}
-		cookie := http.Cookie{
-			Name:    "session",
-			Value:   tokenString,
-			Path:    "/",
-			Expires: tokenExpire,
-			//MaxAge:   3600,
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteLaxMode,
-		}
 
-		http.SetCookie(w, &cookie)
+		http.SetCookie(w, cookie)
 		http.Redirect(w, r, "/user/dashboard", http.StatusFound)
 	}
 }
 
 // logout and deleting session-cookie
-func logout(u db.UserStorage) http.HandlerFunc {
+func (s *Store) logout() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session")
 		if err != nil {
@@ -261,43 +279,29 @@ func logout(u db.UserStorage) http.HandlerFunc {
 				log.Println(err)
 				http.Error(w, "server error", http.StatusInternalServerError)
 			}
-			return
 		}
+		userID, _ := s.tokenstore.GetTokenValue(cookie)
+		s.tokenstore.DeleteToken(userID)
 		cookie.MaxAge = -1
 		http.SetCookie(w, cookie)
 		http.Redirect(w, r, "/login", http.StatusFound)
 	}
 }
 
-func dashboardHandler(t token.TokenService, u db.UserStorage, b db.GuestBookStorage) http.HandlerFunc {
+func (s *Store) dashboardHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/dashboard.html")
 
 		session, _ := r.Cookie("session")
-		tokenValue, _ := t.GetTokenValue(session)
-		user, _ := u.GetUserByID(tokenValue)
-		log.Info(tokenValue)
-
-		tmplt.Execute(w, user)
-	}
-}
-
-func testHandler(t token.TokenService, u db.UserStorage, b db.GuestBookStorage) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/dashboard.html")
-
-		session, _ := r.Cookie("session")
-		tokenValue, _ := t.GetTokenValue(session)
-
-		user, _ := u.GetUserByID(tokenValue)
-		log.Info(tokenValue)
-
+		tokenValue, _ := s.tokenstore.GetTokenValue(session)
+		user, _ := s.userstore.GetUserByID(tokenValue)
+		user.Entry, _ = s.bookstore.GetEntryByID(tokenValue)
 		tmplt.Execute(w, user)
 	}
 }
 
 // signup authentication and validation of user input
-func signupAuth(u db.UserStorage) http.HandlerFunc {
+func (s *Store) signupAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		err := jsondb.ValidateUserInput(r.Form)
@@ -309,28 +313,26 @@ func signupAuth(u db.UserStorage) http.HandlerFunc {
 		joinedName := strings.Join([]string{r.FormValue("firstname"), r.FormValue("lastname")}, " ")
 		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(r.Form.Get("password")), 14)
 		newUser := model.User{Email: r.FormValue("email"), Name: joinedName, Password: hashedpassword}
-		u.CreateUser(&newUser)
+		s.userstore.CreateUser(&newUser)
 	}
 }
 
-func createHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/create.html")
-		tmplt.Execute(w, nil)
-	}
+func createHandler(w http.ResponseWriter, r *http.Request) {
+	tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/create.html")
+	tmplt.Execute(w, nil)
 }
 
-func createEntry(u db.UserStorage, b db.GuestBookStorage) http.HandlerFunc {
+func (s *Store) createEntry() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/create.html")
 		r.ParseForm()
 		session, _ := cookies.Get(r, "session")
 		sessionUserID := session.Values["ID"].(string)
 		userID, _ := uuid.Parse(sessionUserID)
-		user, _ := u.GetUserByID(userID)
+		user, _ := s.userstore.GetUserByID(userID)
 
 		newEntry := model.GuestbookEntry{Name: user.Name, Message: r.FormValue("message"), UserID: user.ID}
-		b.CreateEntry(&newEntry)
+		s.bookstore.CreateEntry(&newEntry)
 		tmplt.Execute(w, nil)
 	}
 }

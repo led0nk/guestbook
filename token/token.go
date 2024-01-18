@@ -10,15 +10,8 @@ import (
 	"github.com/google/uuid"
 )
 
-type TokenService interface {
-	CreateToken(uuid.UUID) (string, time.Time, error)
-	DeleteToken(uuid.UUID) error
-	GetTokenValue(*http.Cookie) (uuid.UUID, error)
-	Valid(string, time.Time) (bool, time.Time, error)
-}
-
 type Token struct {
-	Token      *jwt.Token
+	Token      string
 	Expiration time.Time
 }
 
@@ -34,11 +27,11 @@ func CreateTokenService() (*TokenStorage, error) {
 	return tokenService, nil
 }
 
-func (t *TokenStorage) CreateToken(ID uuid.UUID) (string, time.Time, error) {
+func (t *TokenStorage) CreateToken(ID uuid.UUID) (*http.Cookie, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if ID == uuid.Nil {
-		return "", time.Now(), errors.New("Cannot create Token for empty User ID")
+		return nil, errors.New("Cannot create Token for empty User ID")
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -47,13 +40,24 @@ func (t *TokenStorage) CreateToken(ID uuid.UUID) (string, time.Time, error) {
 	tokenString, _ := token.SignedString([]byte("secret")) //exchange to osenv later
 	expiration := time.Now().Add(15 * time.Minute)
 	tokenStruct := &Token{
-		Token:      token,
+		Token:      tokenString,
 		Expiration: expiration,
 	}
 
 	t.Tokens[ID] = tokenStruct
 
-	return tokenString, expiration, nil
+	cookie := http.Cookie{
+		Name:    "session",
+		Value:   tokenString,
+		Path:    "/",
+		Expires: expiration,
+		//MaxAge:   3600,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	}
+
+	return &cookie, nil
 }
 
 func (t *TokenStorage) DeleteToken(ID uuid.UUID) error {
@@ -86,27 +90,36 @@ func (t *TokenStorage) GetTokenValue(c *http.Cookie) (uuid.UUID, error) {
 	return tokenValue, nil
 
 }
-func (t *TokenStorage) Valid(val string, exp time.Time) (bool, time.Time, error) {
-
-	claims := jwt.MapClaims{}
-	realtoken, err := jwt.ParseWithClaims(val, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte("secret"), nil
-	})
-	if err != nil {
-		return false, time.Time{}, err
-	}
+func (t *TokenStorage) Valid(val string) (bool, error) {
 
 	for _, token := range t.Tokens {
-		if token.Token == realtoken {
-			if token.Expiration.Before(exp) {
-				return false, time.Time{}, errors.New("token expiration timers are different, ALARM!")
+
+		if token.Token == val {
+			if token.Expiration.Before(time.Now()) {
+				return false, errors.New("Token expired")
 			}
-			if exp.After(time.Now()) {
-				exp = time.Now().Add(15 * time.Minute)
-			}
-			return true, exp, nil
+			return true, nil
 		}
 	}
 
-	return false, time.Time{}, errors.New("Token was not found")
+	return false, errors.New("Token was not found")
+}
+
+func (t *TokenStorage) Refresh(val string) (*http.Cookie, error) {
+
+	if val == "" {
+		return nil, errors.New("refresh failed, empty value")
+	}
+
+	cookie := http.Cookie{
+		Name:    "session",
+		Value:   val,
+		Path:    "/",
+		Expires: time.Now().Add(15 * time.Minute),
+		//MaxAge:   3600,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	}
+	return &cookie, nil
 }
