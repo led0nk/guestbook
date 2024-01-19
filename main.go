@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"text/template"
 
 	"github.com/gorilla/mux"
 	templates "github.com/led0nk/guestbook/internal"
@@ -327,13 +326,16 @@ func (s *Store) signupAuth() http.HandlerFunc {
 }
 
 func createHandler(w http.ResponseWriter, r *http.Request) {
-	tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/create.html")
-	tmplt.Execute(w, nil)
+	tmp := templates.NewTemplateHandler()
+	err := tmp.TmplCreate.Execute(w, nil)
+	if err != nil {
+		w.WriteHeader(http.StatusBadGateway)
+		return
+	}
 }
 
 func (s *Store) createEntry() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/create.html")
 		r.ParseForm()
 		session, _ := r.Cookie("session")
 		userID, _ := s.tokenstore.GetTokenValue(session)
@@ -341,6 +343,12 @@ func (s *Store) createEntry() http.HandlerFunc {
 
 		newEntry := model.GuestbookEntry{Name: user.Name, Message: r.FormValue("message"), UserID: user.ID}
 		s.bookstore.CreateEntry(&newEntry)
-		tmplt.Execute(w, nil)
+		tmp := templates.NewTemplateHandler()
+		err := tmp.TmplCreate.Execute(w, user)
+		if err != nil {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+
 	}
 }
