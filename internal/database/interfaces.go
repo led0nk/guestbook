@@ -3,7 +3,7 @@ package db
 import (
 	"net/http"
 
-	"github.com/led0nk/guestbook/model"
+	"github.com/led0nk/guestbook/internal/model"
 
 	"github.com/google/uuid"
 )

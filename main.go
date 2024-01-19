@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,10 +11,9 @@ import (
 	"text/template"
 
 	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
-	"github.com/led0nk/guestbook/db"
-	"github.com/led0nk/guestbook/db/jsondb"
-	"github.com/led0nk/guestbook/model"
+	db "github.com/led0nk/guestbook/internal/database"
+	"github.com/led0nk/guestbook/internal/database/jsondb"
+	"github.com/led0nk/guestbook/internal/model"
 	"github.com/led0nk/guestbook/token"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
@@ -21,12 +21,18 @@ import (
 	"github.com/google/uuid"
 )
 
-var cookies = sessions.NewCookieStore([]byte("secret"))
-
 type Store struct {
 	bookstore  db.GuestBookStore
 	userstore  db.UserStore
 	tokenstore db.TokenStore
+}
+
+func NewHandler(bookstore db.GuestBookStore, userstore db.UserStore, tokenstore db.TokenStore) *Store {
+	return &Store{
+		bookstore:  bookstore,
+		userstore:  userstore,
+		tokenstore: tokenstore,
+	}
 }
 
 func main() {
@@ -66,11 +72,7 @@ func main() {
 		panic("bad storage")
 	}
 
-	storeHandler := Store{
-		bookstore:  guestbookStore,
-		userstore:  userStore,
-		tokenstore: tokenStore,
-	}
+	storeHandler := NewHandler(guestbookStore, userStore, tokenStore)
 
 	//logMiddleware := mux.NewRouter()
 	authMiddleware := mux.NewRouter().PathPrefix("/user").Subrouter()
@@ -83,13 +85,13 @@ func main() {
 	router.HandleFunc("/", storeHandler.delete()).Methods(http.MethodPost)
 	router.HandleFunc("/login", storeHandler.loginHandler).Methods(http.MethodGet)
 	router.HandleFunc("/login", storeHandler.loginAuth()).Methods(http.MethodPost)
-	router.HandleFunc("/search", storeHandler.searchHandler).Methods(http.MethodGet)
 	router.HandleFunc("/logout", storeHandler.logout()).Methods(http.MethodGet)
 	router.HandleFunc("/signup", storeHandler.signupHandler).Methods(http.MethodGet)
 	router.HandleFunc("/signupauth", storeHandler.signupAuth()).Methods(http.MethodPost)
 	//routing through authentication via /user
 	authMiddleware.HandleFunc("/dashboard", storeHandler.dashboardHandler()).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/create", createHandler).Methods(http.MethodGet)
+	authMiddleware.HandleFunc("/search", storeHandler.searchHandler).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/create", storeHandler.createEntry()).Methods(http.MethodPost)
 	log.Info("listening to: ")
 	serverr := http.ListenAndServe(":8080", router)
@@ -211,8 +213,9 @@ func (s *Store) delete() http.HandlerFunc {
 	}
 }
 
+// TODO: implement r.url q= and list entries after Post method (new Handler)
 func (s *Store) searchHandler(w http.ResponseWriter, r *http.Request) {
-	tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/search.html")
+	tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/search.html")
 
 	err := tmplt.Execute(w, nil)
 	if err != nil {
@@ -326,13 +329,49 @@ func (s *Store) createEntry() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/create.html")
 		r.ParseForm()
-		session, _ := cookies.Get(r, "session")
-		sessionUserID := session.Values["ID"].(string)
-		userID, _ := uuid.Parse(sessionUserID)
+		session, _ := r.Cookie("session")
+		userID, _ := s.tokenstore.GetTokenValue(session)
 		user, _ := s.userstore.GetUserByID(userID)
 
 		newEntry := model.GuestbookEntry{Name: user.Name, Message: r.FormValue("message"), UserID: user.ID}
 		s.bookstore.CreateEntry(&newEntry)
 		tmplt.Execute(w, nil)
+	}
+}
+
+type TemplateHandler struct {
+	tmplHome      *template.Template
+	tmplSearch    *template.Template
+	tmplLogin     *template.Template
+	tmplSignUp    *template.Template
+	tmplDashboard *template.Template
+	tmplCreate    *template.Template
+}
+
+var templates embed.FS
+
+func NewTemplateHandler(
+	tmplHome *template.Template,
+	tmplSearch *template.Template,
+	tmplLogin *template.Template,
+	tmplSignUp *template.Template,
+	tmplDashboard *template.Template,
+	tmplCreate *template.Template) *TemplateHandler {
+	loggedoutTemplates := []string{"templates/index.html", "templates/header.html"}
+	loggedinTemplates := []string{"templates/index.html", "templates/loggedinheader.html"}
+	homeTemplate := "template/content.html"
+	searchTemplate := "template/search.html"
+	loginTemplate := "template/login.html"
+	signupTemplate := "template/signup.html"
+	dashboardTemplate := "template/dashboard.html"
+	createTemplate := "template/create.html"
+
+	return &TemplateHandler{
+		tmplHome:      template.Must(template.ParseFS(templates, append(loggedoutTemplates, homeTemplate)...)),
+		tmplSearch:    template.Must(template.ParseFS(templates, append(loggedinTemplates, searchTemplate)...)),
+		tmplLogin:     template.Must(template.ParseFS(templates, append(loggedoutTemplates, loginTemplate)...)),
+		tmplSignUp:    template.Must(template.ParseFS(templates, append(loggedoutTemplates, signupTemplate)...)),
+		tmplDashboard: template.Must(template.ParseFS(templates, append(loggedinTemplates, dashboardTemplate)...)),
+		tmplCreate:    template.Must(template.ParseFS(templates, append(loggedinTemplates, createTemplate)...)),
 	}
 }

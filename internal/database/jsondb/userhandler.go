@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/led0nk/guestbook/model"
+	"github.com/led0nk/guestbook/internal/model"
 )
 
 type UserStorage struct {
