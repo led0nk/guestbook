@@ -1,7 +1,6 @@
 package main
 
 import (
-	"embed"
 	"errors"
 	"flag"
 	"fmt"
@@ -11,6 +10,7 @@ import (
 	"text/template"
 
 	"github.com/gorilla/mux"
+	templates "github.com/led0nk/guestbook/internal"
 	db "github.com/led0nk/guestbook/internal/database"
 	"github.com/led0nk/guestbook/internal/database/jsondb"
 	"github.com/led0nk/guestbook/internal/model"
@@ -171,7 +171,6 @@ func (s *Store) authHandler(next http.Handler) http.Handler {
 // hands over Entries to Handler and prints them out in template
 func (s *Store) handlePage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/content.html")
 		searchName := r.URL.Query().Get("q")
 		var entries []*model.GuestbookEntry
 		if searchName != "" {
@@ -179,7 +178,9 @@ func (s *Store) handlePage() http.HandlerFunc {
 		} else {
 			entries, _ = s.bookstore.ListEntries()
 		}
-		err := tmplt.Execute(w, &entries)
+
+		tmp := templates.NewTemplateHandler()
+		err := tmp.TmplHome.Execute(w, &entries)
 		if err != nil {
 			w.WriteHeader(http.StatusBadGateway)
 			return
@@ -215,9 +216,9 @@ func (s *Store) delete() http.HandlerFunc {
 
 // TODO: implement r.url q= and list entries after Post method (new Handler)
 func (s *Store) searchHandler(w http.ResponseWriter, r *http.Request) {
-	tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/search.html")
+	tmp := templates.NewTemplateHandler()
+	err := tmp.TmplSearch.Execute(w, nil)
 
-	err := tmplt.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
 		return
@@ -226,8 +227,8 @@ func (s *Store) searchHandler(w http.ResponseWriter, r *http.Request) {
 
 // show login Form
 func (s *Store) loginHandler(w http.ResponseWriter, r *http.Request) {
-	tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/login.html")
-	err := tmplt.Execute(w, nil)
+	tmp := templates.NewTemplateHandler()
+	err := tmp.TmplLogin.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
 		return
@@ -236,8 +237,8 @@ func (s *Store) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 // show signup Form
 func (s *Store) signupHandler(w http.ResponseWriter, r *http.Request) {
-	tmplt, _ := template.ParseFiles("templates/index.html", "templates/header.html", "templates/signup.html")
-	err := tmplt.Execute(w, nil)
+	tmp := templates.NewTemplateHandler()
+	err := tmp.TmplSignUp.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
 		return
@@ -293,13 +294,18 @@ func (s *Store) logout() http.HandlerFunc {
 
 func (s *Store) dashboardHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/dashboard.html")
-
 		session, _ := r.Cookie("session")
 		tokenValue, _ := s.tokenstore.GetTokenValue(session)
 		user, _ := s.userstore.GetUserByID(tokenValue)
 		user.Entry, _ = s.bookstore.GetEntryByID(tokenValue)
-		tmplt.Execute(w, user)
+
+		tmp := templates.NewTemplateHandler()
+		err := tmp.TmplDashboard.Execute(w, user)
+		if err != nil {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+
 	}
 }
 
@@ -336,42 +342,5 @@ func (s *Store) createEntry() http.HandlerFunc {
 		newEntry := model.GuestbookEntry{Name: user.Name, Message: r.FormValue("message"), UserID: user.ID}
 		s.bookstore.CreateEntry(&newEntry)
 		tmplt.Execute(w, nil)
-	}
-}
-
-type TemplateHandler struct {
-	tmplHome      *template.Template
-	tmplSearch    *template.Template
-	tmplLogin     *template.Template
-	tmplSignUp    *template.Template
-	tmplDashboard *template.Template
-	tmplCreate    *template.Template
-}
-
-var templates embed.FS
-
-func NewTemplateHandler(
-	tmplHome *template.Template,
-	tmplSearch *template.Template,
-	tmplLogin *template.Template,
-	tmplSignUp *template.Template,
-	tmplDashboard *template.Template,
-	tmplCreate *template.Template) *TemplateHandler {
-	loggedoutTemplates := []string{"templates/index.html", "templates/header.html"}
-	loggedinTemplates := []string{"templates/index.html", "templates/loggedinheader.html"}
-	homeTemplate := "template/content.html"
-	searchTemplate := "template/search.html"
-	loginTemplate := "template/login.html"
-	signupTemplate := "template/signup.html"
-	dashboardTemplate := "template/dashboard.html"
-	createTemplate := "template/create.html"
-
-	return &TemplateHandler{
-		tmplHome:      template.Must(template.ParseFS(templates, append(loggedoutTemplates, homeTemplate)...)),
-		tmplSearch:    template.Must(template.ParseFS(templates, append(loggedinTemplates, searchTemplate)...)),
-		tmplLogin:     template.Must(template.ParseFS(templates, append(loggedoutTemplates, loginTemplate)...)),
-		tmplSignUp:    template.Must(template.ParseFS(templates, append(loggedoutTemplates, signupTemplate)...)),
-		tmplDashboard: template.Must(template.ParseFS(templates, append(loggedinTemplates, dashboardTemplate)...)),
-		tmplCreate:    template.Must(template.ParseFS(templates, append(loggedinTemplates, createTemplate)...)),
 	}
 }
