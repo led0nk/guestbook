@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"text/template"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -14,14 +13,13 @@ import (
 	"github.com/led0nk/guestbook/internal/database/jsondb"
 	"github.com/led0nk/guestbook/internal/middleware"
 	"github.com/led0nk/guestbook/internal/model"
-	"github.com/led0nk/guestbook/token"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Server struct {
 	addr       string
-	logger     logrus.FieldLogger
+	log        logrus.FieldLogger
 	mw         []mux.MiddlewareFunc
 	bookstore  db.GuestBookStore
 	userstore  db.UserStore
@@ -38,7 +36,7 @@ func NewServer(
 ) *Server {
 	return &Server{
 		addr:       address,
-		logger:     logger,
+		log:        logger,
 		mw:         middleware,
 		bookstore:  bStore,
 		userstore:  uStore,
@@ -46,34 +44,27 @@ func NewServer(
 	}
 }
 
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	addr := "localhost:8080"
-	bStore, _ := jsondb.CreateBookStorage("./entries.json")
-	uStore, _ := jsondb.CreateUserStorage("./user.json")
-	tStore, _ := token.CreateTokenService()
-	logger := logrus.New()
+func (s *Server) ServeHTTP() {
 	// has to be called in main including above initialisations
-	server := NewServer(addr, logger, bStore, uStore, tStore, middleware.Logger(), middleware.Auth(tStore))
 	router := mux.NewRouter()
 
 	authMiddleware := mux.NewRouter().PathPrefix("/user").Subrouter()
-	authMiddleware.Use(middleware.Auth(server.tokenstore))
-	router.Use(server.mw...)
+	authMiddleware.Use(middleware.Auth(s.tokenstore))
+	router.Use(middleware.Logger())
 	router.PathPrefix("/user").Handler(authMiddleware)
 	// routing
-	router.HandleFunc("/", server.handlePage()).Methods(http.MethodGet)
-	router.HandleFunc("/submit", server.submit).Methods(http.MethodPost)
-	router.HandleFunc("/", server.delete()).Methods(http.MethodPost)
-	router.HandleFunc("/login", server.loginHandler).Methods(http.MethodGet)
-	router.HandleFunc("/login", server.loginAuth()).Methods(http.MethodPost)
-	router.HandleFunc("/logout", server.logout()).Methods(http.MethodGet)
-	router.HandleFunc("/signup", server.signupHandler).Methods(http.MethodGet)
-	router.HandleFunc("/signupauth", server.signupAuth()).Methods(http.MethodPost)
+	router.HandleFunc("/", s.handlePage()).Methods(http.MethodGet)
+	router.HandleFunc("/", s.delete()).Methods(http.MethodPost)
+	router.HandleFunc("/login", s.loginHandler).Methods(http.MethodGet)
+	router.HandleFunc("/login", s.loginAuth()).Methods(http.MethodPost)
+	router.HandleFunc("/logout", s.logout()).Methods(http.MethodGet)
+	router.HandleFunc("/signup", s.signupHandler).Methods(http.MethodGet)
+	router.HandleFunc("/signupauth", s.signupAuth()).Methods(http.MethodPost)
 	// routing through authentication via /user
-	authMiddleware.HandleFunc("/dashboard", server.dashboardHandler()).Methods(http.MethodGet)
+	authMiddleware.HandleFunc("/dashboard", s.dashboardHandler()).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/create", createHandler).Methods(http.MethodGet)
-	authMiddleware.HandleFunc("/search", server.searchHandler).Methods(http.MethodGet)
-	authMiddleware.HandleFunc("/create", server.createEntry()).Methods(http.MethodPost)
+	authMiddleware.HandleFunc("/search", s.searchHandler).Methods(http.MethodGet)
+	authMiddleware.HandleFunc("/create", s.createEntry()).Methods(http.MethodPost)
 	// log.Info("listening to: ")
 
 	srv := &http.Server{
@@ -105,17 +96,6 @@ func (s *Server) handlePage() http.HandlerFunc {
 		}
 
 	}
-}
-
-// submits guestbook entry (name, message)
-func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	newEntry := model.GuestbookEntry{Name: r.FormValue("name"), Message: r.FormValue("message")}
-	if newEntry.Name == "" {
-		return
-	}
-	s.bookstore.CreateEntry(&newEntry)
-	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func (s *Server) delete() http.HandlerFunc {
@@ -163,6 +143,32 @@ func (s *Server) signupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) dashboardHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		session, _ := r.Cookie("session")
+		tokenValue, _ := s.tokenstore.GetTokenValue(session)
+		user, _ := s.userstore.GetUserByID(tokenValue)
+		user.Entry, _ = s.bookstore.GetEntryByID(tokenValue)
+
+		tmp := templates.NewTemplateHandler()
+		err := tmp.TmplDashboard.Execute(w, user)
+		if err != nil {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+
+	}
+}
+
+func createHandler(w http.ResponseWriter, r *http.Request) {
+	tmp := templates.NewTemplateHandler()
+	err := tmp.TmplCreate.Execute(w, nil)
+	if err != nil {
+		w.WriteHeader(http.StatusBadGateway)
+		return
+	}
+}
+
 // login authentication and check if user exists
 func (s *Server) loginAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +186,7 @@ func (s *Server) loginAuth() http.HandlerFunc {
 
 		cookie, err := s.tokenstore.CreateToken(user.ID)
 		if err != nil {
-			log.Error(err)
+			s.log.Error(err)
 			return
 		}
 
@@ -198,7 +204,7 @@ func (s *Server) logout() http.HandlerFunc {
 			case errors.Is(err, http.ErrNoCookie):
 				http.Error(w, "cookie not found", http.StatusBadRequest)
 			default:
-				log.Println(err)
+				s.log.Error(err)
 				http.Error(w, "server error", http.StatusInternalServerError)
 			}
 		}
@@ -207,23 +213,6 @@ func (s *Server) logout() http.HandlerFunc {
 		cookie.MaxAge = -1
 		http.SetCookie(w, cookie)
 		http.Redirect(w, r, "/login", http.StatusFound)
-	}
-}
-
-func (s *Server) dashboardHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		session, _ := r.Cookie("session")
-		tokenValue, _ := s.tokenstore.GetTokenValue(session)
-		user, _ := s.userstore.GetUserByID(tokenValue)
-		user.Entry, _ = s.bookstore.GetEntryByID(tokenValue)
-
-		tmp := templates.NewTemplateHandler()
-		err := tmp.TmplDashboard.Execute(w, user)
-		if err != nil {
-			w.WriteHeader(http.StatusBadGateway)
-			return
-		}
-
 	}
 }
 
@@ -244,11 +233,6 @@ func (s *Server) signupAuth() http.HandlerFunc {
 	}
 }
 
-func createHandler(w http.ResponseWriter, r *http.Request) {
-	tmplt, _ := template.ParseFiles("templates/index.html", "templates/loggedinheader.html", "templates/create.html")
-	tmplt.Execute(w, nil)
-}
-
 func (s *Server) createEntry() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
@@ -258,12 +242,7 @@ func (s *Server) createEntry() http.HandlerFunc {
 
 		newEntry := model.GuestbookEntry{Name: user.Name, Message: r.FormValue("message"), UserID: user.ID}
 		s.bookstore.CreateEntry(&newEntry)
-		tmp := templates.NewTemplateHandler()
-		err := tmp.TmplCreate.Execute(w, user)
-		if err != nil {
-			w.WriteHeader(http.StatusBadGateway)
-			return
-		}
+		http.Redirect(w, r, "/dashboard", http.StatusFound)
 
 	}
 }
