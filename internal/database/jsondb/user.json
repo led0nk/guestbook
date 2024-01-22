@@ -1,0 +1,69 @@
+{
+	"5912e90b-1191-40af-bcbe-60800ead1be8": {
+		"id": "5912e90b-1191-40af-bcbe-60800ead1be8",
+		"email": "peter.müller@web.de",
+		"name": "Peter Müller",
+		"password": "JDJhJDE0JExRU3FpcjFpSVBRYXl3ZWwzdHVVS2UzQXhLUVlxLnMza2pSVXczeGRTdGF0My84eWhaSzFX",
+		"entry": null,
+		"isadmin": false
+	},
+	"b4f49878-f4b2-4d63-818c-75d875fc0967": {
+		"id": "b4f49878-f4b2-4d63-818c-75d875fc0967",
+		"email": "peter@pan.de",
+		"name": "peter pan",
+		"password": "JDJhJDE0JExha2RVV29VQkd2dFdXUHBYQ3V3bnV5RlNGVXZqQmtqTEZmOWZ6QjNmSUxRV3NjUENoRER1",
+		"entry": [
+			{
+				"id": "d517e7dc-5463-487c-8b3b-d49741f91560",
+				"name": "Peter Pan",
+				"message": "Hallo 123",
+				"created_at": "Saturday, 06-Jan-24 11:15:24 CET",
+				"userid": "b4f49878-f4b2-4d63-818c-75d875fc0967"
+			},
+			{
+				"id": "57b445fe-19ea-41f6-b4f6-861d42aeade6",
+				"name": "Peter Pan",
+				"message": "dies ist ein TEstdies ist ein TEstdies ist ein TEst\r\n\r\ndies ist ein TEstdies ist ein TEstdies ist ein TEst\r\n\r\ndies ist ein TEst\r\ndies ist ein TEst\r\ndies ist ein TEst\r\ndies ist ein TEst\r\ndies ist ein TEstdies ist ein TEst",
+				"created_at": "Monday, 08-Jan-24 01:13:43 CET",
+				"userid": "b4f49878-f4b2-4d63-818c-75d875fc0967"
+			},
+			{
+				"id": "73a87e20-c8a8-4d86-8885-b3090234162a",
+				"name": "peter pan",
+				"message": "and again testing purpose",
+				"created_at": "Saturday, 20-Jan-24 02:30:52 CET",
+				"userid": "b4f49878-f4b2-4d63-818c-75d875fc0967"
+			},
+			{
+				"id": "7b29fbd4-1fe7-4043-88f6-ed9a61999c65",
+				"name": "peter pan",
+				"message": "test only",
+				"created_at": "Saturday, 20-Jan-24 02:29:49 CET",
+				"userid": "b4f49878-f4b2-4d63-818c-75d875fc0967"
+			},
+			{
+				"id": "7bbd9c6f-6adf-4968-a281-81b1446c5d47",
+				"name": "peter pan",
+				"message": "today is a beautiful day",
+				"created_at": "Friday, 19-Jan-24 01:59:37 CET",
+				"userid": "b4f49878-f4b2-4d63-818c-75d875fc0967"
+			},
+			{
+				"id": "9a9ad1ef-e8eb-4ab1-8a05-1c219f49dbd2",
+				"name": "peter pan",
+				"message": "this is a new entry",
+				"created_at": "Tuesday, 16-Jan-24 11:42:01 CET",
+				"userid": "b4f49878-f4b2-4d63-818c-75d875fc0967"
+			}
+		],
+		"isadmin": false
+	},
+	"b650252a-4d13-4c16-8d50-95c902e4d749": {
+		"id": "b650252a-4d13-4c16-8d50-95c902e4d749",
+		"email": "test@web.de",
+		"name": "Test Test",
+		"password": "JDJhJDE0JEREeEROSTVuMzNoZnY3c2EwYjl2OS5hTXZML0pkUUM4ZWRNWGxsUU5vVk5heGpHby96Sm8y",
+		"entry": null,
+		"isadmin": false
+	}
+}

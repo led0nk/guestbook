@@ -10,4 +10,5 @@ type User struct {
 	Name     string            `json:"name"`
 	Password []byte            `json:"password"`
 	Entry    []*GuestbookEntry `json:"entry"`
+	IsAdmin  bool              `json:"isadmin"`
 }

@@ -2,7 +2,6 @@ package v1
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -59,7 +58,7 @@ func (s *Server) ServeHTTP() {
 	router.HandleFunc("/login", s.loginAuth()).Methods(http.MethodPost)
 	router.HandleFunc("/logout", s.logout()).Methods(http.MethodGet)
 	router.HandleFunc("/signup", s.signupHandler).Methods(http.MethodGet)
-	router.HandleFunc("/signupauth", s.signupAuth()).Methods(http.MethodPost)
+	router.HandleFunc("/signup", s.signupAuth()).Methods(http.MethodPost)
 	// routing through authentication via /user
 	authMiddleware.HandleFunc("/dashboard", s.dashboardHandler()).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/create", createHandler).Methods(http.MethodGet)
@@ -175,11 +174,12 @@ func (s *Server) loginAuth() http.HandlerFunc {
 		email := r.FormValue("email")
 		user, error := s.userstore.GetUserByEmail(email)
 		if error != nil {
-			fmt.Println("cannot access right hashpassword", error)
+			s.log.Error("cannot access right hashpassword", error)
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword(user.Password, []byte(r.FormValue("password"))); err != nil {
+			s.log.Error("error while comparing password", err)
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -222,14 +222,20 @@ func (s *Server) signupAuth() http.HandlerFunc {
 		r.ParseForm()
 		err := jsondb.ValidateUserInput(r.Form)
 		if err != nil {
-			fmt.Println("user form not valid:", err)
-			http.Redirect(w, r, "/signup", http.StatusBadRequest)
+			s.log.Error("user form not valid: ", err)
+			http.Redirect(w, r, "/signup", http.StatusFound)
 			return
 		}
 		joinedName := strings.Join([]string{r.FormValue("firstname"), r.FormValue("lastname")}, " ")
 		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(r.Form.Get("password")), 14)
-		newUser := model.User{Email: r.FormValue("email"), Name: joinedName, Password: hashedpassword}
-		s.userstore.CreateUser(&newUser)
+		newUser := model.User{Email: r.FormValue("email"), Name: joinedName, Password: hashedpassword, IsAdmin: false}
+		_, usererr := s.userstore.CreateUser(&newUser)
+		if usererr != nil {
+			s.log.Error("creation error: ", err)
+			http.Redirect(w, r, "signup", http.StatusFound)
+			w.WriteHeader(http.StatusUnauthorized)
+		}
+		http.Redirect(w, r, "/login", http.StatusFound)
 	}
 }
 
@@ -241,8 +247,8 @@ func (s *Server) createEntry() http.HandlerFunc {
 		user, _ := s.userstore.GetUserByID(userID)
 
 		newEntry := model.GuestbookEntry{Name: user.Name, Message: r.FormValue("message"), UserID: user.ID}
-		s.bookstore.CreateEntry(&newEntry)
-		http.Redirect(w, r, "/dashboard", http.StatusFound)
 
+		s.bookstore.CreateEntry(&newEntry)
+		http.Redirect(w, r, "/user/dashboard", http.StatusFound)
 	}
 }
