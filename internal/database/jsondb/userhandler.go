@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
+	"net/smtp"
 	"net/url"
 	"os"
 	"sync"
@@ -121,5 +122,25 @@ func ValidateUserInput(v url.Values) error {
 	if emailValid != nil {
 		return errors.New("email is not in correct format, please try again")
 	}
+	return nil
+}
+
+func (u *UserStorage) SendVerMail() error {
+	auth := smtp.PlainAuth(
+		"",
+		"janik.knodel@gmail.com",
+		"uegv hgyd dmml alwq",
+		"smtp.gmail.com",
+	)
+
+	msg := "Subject: test\nTestMail."
+
+	smtp.SendMail(
+		"smtp.gmail.com:587",
+		auth,
+		"Kndlive-Guestbook",
+		[]string{"janik.knodel@gmail.com"},
+		[]byte(msg),
+	)
 	return nil
 }

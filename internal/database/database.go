@@ -20,6 +20,7 @@ type UserStore interface {
 	CreateUser(*model.User) (uuid.UUID, error)
 	GetUserByEmail(string) (*model.User, error)
 	GetUserByID(uuid.UUID) (*model.User, error)
+	SendVerMail() error
 }
 
 type TokenStore interface {
