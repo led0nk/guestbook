@@ -64,7 +64,6 @@ func (u *UserStorage) CreateUser(user *model.User) (uuid.UUID, error) {
 	if user.ID == uuid.Nil {
 		user.ID = uuid.New()
 	}
-	fmt.Println(user)
 	if err := u.writeUserJSON(); err != nil {
 		return uuid.Nil, err
 	}
