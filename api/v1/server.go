@@ -2,6 +2,7 @@ package v1
 
 import (
 	"errors"
+	"html"
 	"net/http"
 	"strings"
 
@@ -228,7 +229,7 @@ func (s *Server) signupAuth() http.HandlerFunc {
 		}
 		joinedName := strings.Join([]string{r.FormValue("firstname"), r.FormValue("lastname")}, " ")
 		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(r.Form.Get("password")), 14)
-		newUser := model.User{Email: r.FormValue("email"), Name: joinedName, Password: hashedpassword, IsAdmin: false}
+		newUser := model.User{Email: html.EscapeString(r.FormValue("email")), Name: html.EscapeString(joinedName), Password: hashedpassword, IsAdmin: false}
 		debug, usererr := s.userstore.CreateUser(&newUser)
 		if usererr != nil {
 			s.log.Error("creation error: ", err)
@@ -247,8 +248,7 @@ func (s *Server) createEntry() http.HandlerFunc {
 		session, _ := r.Cookie("session")
 		userID, _ := s.tokenstore.GetTokenValue(session)
 		user, _ := s.userstore.GetUserByID(userID)
-
-		newEntry := model.GuestbookEntry{Name: user.Name, Message: r.FormValue("message"), UserID: user.ID}
+		newEntry := model.GuestbookEntry{Name: user.Name, Message: html.EscapeString(r.FormValue("message")), UserID: user.ID}
 
 		s.bookstore.CreateEntry(&newEntry)
 		http.Redirect(w, r, "/user/dashboard", http.StatusFound)

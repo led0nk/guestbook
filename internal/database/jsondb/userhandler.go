@@ -5,13 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
-	"net/smtp"
 	"net/url"
 	"os"
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/joho/godotenv"
 	"github.com/led0nk/guestbook/internal/model"
 )
 
@@ -66,7 +64,8 @@ func (u *UserStorage) CreateUser(user *model.User) (uuid.UUID, error) {
 	if user.ID == uuid.Nil {
 		user.ID = uuid.New()
 	}
-	fmt.Print(user)
+
+	u.user[user.ID] = user
 	if err := u.writeUserJSON(); err != nil {
 		return uuid.Nil, err
 	}
@@ -125,34 +124,5 @@ func ValidateUserInput(v url.Values) error {
 	if emailValid != nil {
 		return errors.New("email is not in correct format, please try again")
 	}
-	return nil
-}
-
-func (u *UserStorage) SendVerMail(mailto string) error {
-	err := godotenv.Load(".env")
-	if err != nil {
-		return err
-	}
-	email := os.Getenv("EMAIL")
-	password := os.Getenv("SMTPPW")
-	host := os.Getenv("HOST")
-	port := os.Getenv("PORT")
-
-	auth := smtp.PlainAuth(
-		"",
-		email,
-		password,
-		host,
-	)
-
-	msg := "Subject: test\nTestMail."
-
-	smtp.SendMail(
-		host+":"+port,
-		auth,
-		email,
-		[]string{mailto},
-		[]byte(msg),
-	)
 	return nil
 }

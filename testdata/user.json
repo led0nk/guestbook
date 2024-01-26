@@ -7,6 +7,14 @@
 		"entry": null,
 		"isadmin": false
 	},
+	"9a8b1dc9-088a-4091-9220-3b3842305314": {
+		"id": "9a8b1dc9-088a-4091-9220-3b3842305314",
+		"email": "admin@admin.de",
+		"name": "admin admin",
+		"password": "JDJhJDE0JGJsRE1KNVJMY28uSHdQNU5LeXpNZ2V0OHZSbi52eFdxcXpwZldoL3FSRldBaEFXMS4zUGJp",
+		"entry": null,
+		"isadmin": true
+	},
 	"b4f49878-f4b2-4d63-818c-75d875fc0967": {
 		"id": "b4f49878-f4b2-4d63-818c-75d875fc0967",
 		"email": "peter@pan.de",

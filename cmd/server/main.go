@@ -2,8 +2,11 @@ package main
 
 import (
 	"flag"
+	"net/smtp"
 	"net/url"
+	"os"
 
+	"github.com/joho/godotenv"
 	v1 "github.com/led0nk/guestbook/api/v1"
 	db "github.com/led0nk/guestbook/internal/database"
 	"github.com/led0nk/guestbook/internal/database/jsondb"
@@ -24,7 +27,7 @@ func main() {
 
 	var (
 		addr     = flag.String("addr", "localhost:8080", "server port")
-		entryStr = flag.String("entrydata", "file://../../internal/database/jsondb/entries.json", "link to entry-database")
+		entryStr = flag.String("entrydata", "file://../../testdata/entries.json", "link to entry-database")
 		//userStr  = flag.String("userdata", "file://user.json", "link to user-database")
 		bStore db.GuestBookStore
 		uStore db.UserStore
@@ -41,7 +44,7 @@ func main() {
 	case "file":
 		log.Info("opening: ", u.Host+u.Path)
 		bookStorage, _ := jsondb.CreateBookStorage(u.Host + u.Path)
-		userStorage, _ := jsondb.CreateUserStorage("../../internal/database/jsondb/user.json")
+		userStorage, _ := jsondb.CreateUserStorage("../../testdata/user.json")
 		bStore = bookStorage
 		uStore = userStorage
 
@@ -66,6 +69,7 @@ func DerefString(s *string) string {
 	return ""
 }
 
+// TODO
 func checkFlag(flag *string, storage any) any {
 	path, err := url.Parse(*flag)
 	if err != nil {
@@ -79,5 +83,34 @@ func checkFlag(flag *string, storage any) any {
 	default:
 
 	}
+	return nil
+}
+
+func SendVerMail(mailto string) error {
+	err := godotenv.Load(".env")
+	if err != nil {
+		return err
+	}
+	email := os.Getenv("EMAIL")
+	password := os.Getenv("SMTPPW")
+	host := os.Getenv("HOST")
+	port := os.Getenv("PORT")
+
+	auth := smtp.PlainAuth(
+		"",
+		email,
+		password,
+		host,
+	)
+
+	msg := "Subject: test\nTestMail."
+
+	smtp.SendMail(
+		host+":"+port,
+		auth,
+		email,
+		[]string{mailto},
+		[]byte(msg),
+	)
 	return nil
 }
