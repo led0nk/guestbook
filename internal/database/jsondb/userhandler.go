@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/joho/godotenv"
 	"github.com/led0nk/guestbook/internal/model"
 )
 
@@ -65,9 +66,11 @@ func (u *UserStorage) CreateUser(user *model.User) (uuid.UUID, error) {
 	if user.ID == uuid.Nil {
 		user.ID = uuid.New()
 	}
+	fmt.Print(user)
 	if err := u.writeUserJSON(); err != nil {
 		return uuid.Nil, err
 	}
+
 	return user.ID, nil
 }
 
@@ -125,21 +128,30 @@ func ValidateUserInput(v url.Values) error {
 	return nil
 }
 
-func (u *UserStorage) SendVerMail() error {
+func (u *UserStorage) SendVerMail(mailto string) error {
+	err := godotenv.Load(".env")
+	if err != nil {
+		return err
+	}
+	email := os.Getenv("EMAIL")
+	password := os.Getenv("SMTPPW")
+	host := os.Getenv("HOST")
+	port := os.Getenv("PORT")
+
 	auth := smtp.PlainAuth(
 		"",
-		"janik.knodel@gmail.com",
-		"uegv hgyd dmml alwq",
-		"smtp.gmail.com",
+		email,
+		password,
+		host,
 	)
 
 	msg := "Subject: test\nTestMail."
 
 	smtp.SendMail(
-		"smtp.gmail.com:587",
+		host+":"+port,
 		auth,
-		"Kndlive-Guestbook",
-		[]string{"janik.knodel@gmail.com"},
+		email,
+		[]string{mailto},
 		[]byte(msg),
 	)
 	return nil

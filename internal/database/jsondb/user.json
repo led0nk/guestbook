@@ -4,7 +4,8 @@
 		"email": "peter.müller@web.de",
 		"name": "Peter Müller",
 		"password": "JDJhJDE0JExRU3FpcjFpSVBRYXl3ZWwzdHVVS2UzQXhLUVlxLnMza2pSVXczeGRTdGF0My84eWhaSzFX",
-		"entry": null
+		"entry": null,
+		"isadmin": false
 	},
 	"b4f49878-f4b2-4d63-818c-75d875fc0967": {
 		"id": "b4f49878-f4b2-4d63-818c-75d875fc0967",
@@ -54,13 +55,15 @@
 				"created_at": "Tuesday, 16-Jan-24 11:42:01 CET",
 				"userid": "b4f49878-f4b2-4d63-818c-75d875fc0967"
 			}
-		]
+		],
+		"isadmin": false
 	},
 	"b650252a-4d13-4c16-8d50-95c902e4d749": {
 		"id": "b650252a-4d13-4c16-8d50-95c902e4d749",
 		"email": "test@web.de",
 		"name": "Test Test",
 		"password": "JDJhJDE0JEREeEROSTVuMzNoZnY3c2EwYjl2OS5hTXZML0pkUUM4ZWRNWGxsUU5vVk5heGpHby96Sm8y",
-		"entry": null
+		"entry": null,
+		"isadmin": false
 	}
 }

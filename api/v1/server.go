@@ -229,12 +229,14 @@ func (s *Server) signupAuth() http.HandlerFunc {
 		joinedName := strings.Join([]string{r.FormValue("firstname"), r.FormValue("lastname")}, " ")
 		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(r.Form.Get("password")), 14)
 		newUser := model.User{Email: r.FormValue("email"), Name: joinedName, Password: hashedpassword, IsAdmin: false}
-		_, usererr := s.userstore.CreateUser(&newUser)
+		debug, usererr := s.userstore.CreateUser(&newUser)
 		if usererr != nil {
 			s.log.Error("creation error: ", err)
 			http.Redirect(w, r, "signup", http.StatusFound)
 			w.WriteHeader(http.StatusUnauthorized)
 		}
+		debuguser, _ := s.userstore.GetUserByID(debug)
+		s.log.Debug(debuguser)
 		http.Redirect(w, r, "/login", http.StatusFound)
 	}
 }
