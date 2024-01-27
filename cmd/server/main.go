@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"net/url"
-	"os"
 
 	"github.com/joho/godotenv"
 	v1 "github.com/led0nk/guestbook/api/v1"
@@ -53,9 +52,10 @@ func main() {
 	}
 	//in memory
 	tokenStorage, _ := token.CreateTokenService()
+
 	tStore = tokenStorage
 
-	err = godotenv.Load(".env")
+	err = godotenv.Load("../../testdata/.env")
 	if err != nil {
 		panic("bad mailer env")
 	}
@@ -63,11 +63,11 @@ func main() {
 	//protect from nil pointer
 	address := DerefString(addr)
 	//create mailservice
-	mailer := v1.NewMailer(os.Getenv("EMAIL"), os.Getenv("SMTPPW"), os.Getenv("HOST"), os.Getenv("PORT"))
+
 	//create templatehandler
 	templates := templates.NewTemplateHandler()
 	//create Server
-	server := v1.NewServer(address, mailer, templates, logger, bStore, uStore, tStore, middleware.Logger(), middleware.Auth(tStore))
+	server := v1.NewServer(address, templates, logger, bStore, uStore, tStore, middleware.Logger(), middleware.Auth(tStore))
 	server.ServeHTTP()
 }
 

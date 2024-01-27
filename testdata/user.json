@@ -5,7 +5,17 @@
 		"name": "Peter Müller",
 		"password": "JDJhJDE0JExRU3FpcjFpSVBRYXl3ZWwzdHVVS2UzQXhLUVlxLnMza2pSVXczeGRTdGF0My84eWhaSzFX",
 		"entry": null,
-		"isadmin": false
+		"isadmin": false,
+		"isverified": false
+	},
+	"6f6179db-cab7-4bd5-b404-4a5b0ca3b27e": {
+		"id": "6f6179db-cab7-4bd5-b404-4a5b0ca3b27e",
+		"email": "test@person.de",
+		"name": "test person",
+		"password": "JDJhJDE0JEk2ZTFKMU53dUhNMjV2QXIwZ3VRLk9JVU4vTjNtUFhNcDlHSlF6RzhqMFJiVjgxY2R5VzJp",
+		"entry": null,
+		"isadmin": false,
+		"isverified": false
 	},
 	"9a8b1dc9-088a-4091-9220-3b3842305314": {
 		"id": "9a8b1dc9-088a-4091-9220-3b3842305314",
@@ -13,7 +23,8 @@
 		"name": "admin admin",
 		"password": "JDJhJDE0JGJsRE1KNVJMY28uSHdQNU5LeXpNZ2V0OHZSbi52eFdxcXpwZldoL3FSRldBaEFXMS4zUGJp",
 		"entry": null,
-		"isadmin": true
+		"isadmin": true,
+		"isverified": false
 	},
 	"b4f49878-f4b2-4d63-818c-75d875fc0967": {
 		"id": "b4f49878-f4b2-4d63-818c-75d875fc0967",
@@ -64,7 +75,8 @@
 				"userid": "b4f49878-f4b2-4d63-818c-75d875fc0967"
 			}
 		],
-		"isadmin": false
+		"isadmin": false,
+		"isverified": false
 	},
 	"b650252a-4d13-4c16-8d50-95c902e4d749": {
 		"id": "b650252a-4d13-4c16-8d50-95c902e4d749",
@@ -72,6 +84,7 @@
 		"name": "Test Test",
 		"password": "JDJhJDE0JEREeEROSTVuMzNoZnY3c2EwYjl2OS5hTXZML0pkUUM4ZWRNWGxsUU5vVk5heGpHby96Sm8y",
 		"entry": null,
-		"isadmin": false
+		"isadmin": false,
+		"isverified": false
 	}
 }

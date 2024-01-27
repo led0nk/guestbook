@@ -1,4 +1,4 @@
-package v1
+package mailer
 
 import (
 	"bytes"
@@ -37,7 +37,7 @@ func (m *Mailer) SendVerMail(user *model.User, tmpl *templates.TemplateHandler) 
 	msg := "Subject: Email Validation" + "\n" + headers + "\n\n" + body.String()
 
 	err := smtp.SendMail(
-		m.Host+""+m.Port,
+		m.Host+":"+m.Port,
 		smtp.PlainAuth(
 			"",
 			m.Email,

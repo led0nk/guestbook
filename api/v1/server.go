@@ -19,7 +19,6 @@ import (
 
 type Server struct {
 	addr       string
-	mailer     *Mailer
 	templates  *templates.TemplateHandler
 	log        logrus.FieldLogger
 	mw         []mux.MiddlewareFunc
@@ -30,7 +29,6 @@ type Server struct {
 
 func NewServer(
 	address string,
-	mailer *Mailer,
 	templates *templates.TemplateHandler,
 	logger logrus.FieldLogger,
 	bStore db.GuestBookStore,
@@ -40,7 +38,6 @@ func NewServer(
 ) *Server {
 	return &Server{
 		addr:       address,
-		mailer:     mailer,
 		templates:  templates,
 		log:        logger,
 		mw:         middleware,
@@ -53,7 +50,6 @@ func NewServer(
 func (s *Server) ServeHTTP() {
 	// has to be called in main including above initialisations
 	router := mux.NewRouter()
-
 	authMiddleware := mux.NewRouter().PathPrefix("/user").Subrouter()
 	authMiddleware.Use(middleware.Auth(s.tokenstore))
 	router.Use(middleware.Logger())
@@ -66,6 +62,8 @@ func (s *Server) ServeHTTP() {
 	router.HandleFunc("/logout", s.logout()).Methods(http.MethodGet)
 	router.HandleFunc("/signup", s.signupHandler).Methods(http.MethodGet)
 	router.HandleFunc("/signup", s.signupAuth()).Methods(http.MethodPost)
+	router.HandleFunc("/verify", s.verifyHandler).Methods(http.MethodGet)
+	router.HandleFunc("/verify", s.verifyAuth()).Methods(http.MethodPost)
 	// routing through authentication via /user
 	authMiddleware.HandleFunc("/dashboard", s.dashboardHandler()).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/create", s.createHandler).Methods(http.MethodGet)
@@ -86,6 +84,7 @@ func (s *Server) ServeHTTP() {
 // hands over Entries to Handler and prints them out in template
 func (s *Server) handlePage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		//TODO for Search
 		searchName := r.URL.Query().Get("q")
 		var entries []*model.GuestbookEntry
 		if searchName != "" {
@@ -94,8 +93,7 @@ func (s *Server) handlePage() http.HandlerFunc {
 			entries, _ = s.bookstore.ListEntries()
 		}
 
-		tmp := templates.NewTemplateHandler()
-		err := tmp.TmplHome.Execute(w, &entries)
+		err := s.templates.TmplHome.Execute(w, &entries)
 		if err != nil {
 			w.WriteHeader(http.StatusBadGateway)
 			return
@@ -170,6 +168,14 @@ func (s *Server) createHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) verifyHandler(w http.ResponseWriter, r *http.Request) {
+	err := s.templates.TmplVerification.Execute(w, nil)
+	if err != nil {
+		w.WriteHeader(http.StatusBadGateway)
+		return
+	}
+}
+
 func (s *Server) createEntry() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
@@ -238,7 +244,7 @@ func (s *Server) logout() http.HandlerFunc {
 }
 
 // signup authentication and validation of user input
-func (s *Server) signupAuth() http.HandlerFunc {
+func (s *Server) signupAuth(m Mailersvc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		err := jsondb.ValidateUserInput(r.Form)
@@ -256,11 +262,17 @@ func (s *Server) signupAuth() http.HandlerFunc {
 			http.Redirect(w, r, "signup", http.StatusFound)
 			w.WriteHeader(http.StatusUnauthorized)
 		}
-		err = s.mailer.SendVerMail(&newUser, s.templates)
+		err = m.SendVerMail(&newUser, s.templates)
 		if err != nil {
 			s.log.Error("error executing template: ", err)
 			return
 		}
-		http.Redirect(w, r, "/login", http.StatusFound)
+		http.Redirect(w, r, "/verify", http.StatusFound)
+	}
+}
+
+func (s *Server) verifyAuth() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
 	}
 }
