@@ -19,6 +19,8 @@ import (
 
 type Server struct {
 	addr       string
+	mailer     *Mailer
+	templates  *templates.TemplateHandler
 	log        logrus.FieldLogger
 	mw         []mux.MiddlewareFunc
 	bookstore  db.GuestBookStore
@@ -28,6 +30,8 @@ type Server struct {
 
 func NewServer(
 	address string,
+	mailer *Mailer,
+	templates *templates.TemplateHandler,
 	logger logrus.FieldLogger,
 	bStore db.GuestBookStore,
 	uStore db.UserStore,
@@ -36,6 +40,8 @@ func NewServer(
 ) *Server {
 	return &Server{
 		addr:       address,
+		mailer:     mailer,
+		templates:  templates,
 		log:        logger,
 		mw:         middleware,
 		bookstore:  bStore,
@@ -62,7 +68,7 @@ func (s *Server) ServeHTTP() {
 	router.HandleFunc("/signup", s.signupAuth()).Methods(http.MethodPost)
 	// routing through authentication via /user
 	authMiddleware.HandleFunc("/dashboard", s.dashboardHandler()).Methods(http.MethodGet)
-	authMiddleware.HandleFunc("/create", createHandler).Methods(http.MethodGet)
+	authMiddleware.HandleFunc("/create", s.createHandler).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/search", s.searchHandler).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/create", s.createEntry()).Methods(http.MethodPost)
 	// log.Info("listening to: ")
@@ -114,8 +120,7 @@ func (s *Server) delete() http.HandlerFunc {
 
 // TODO: implement r.url q= and list entries after Post method (new Handler)
 func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
-	tmp := templates.NewTemplateHandler()
-	err := tmp.TmplSearch.Execute(w, nil)
+	err := s.templates.TmplSearch.Execute(w, nil)
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
@@ -125,8 +130,7 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 
 // show login Form
 func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
-	tmp := templates.NewTemplateHandler()
-	err := tmp.TmplLogin.Execute(w, nil)
+	err := s.templates.TmplLogin.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
 		return
@@ -135,8 +139,7 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 // show signup Form
 func (s *Server) signupHandler(w http.ResponseWriter, r *http.Request) {
-	tmp := templates.NewTemplateHandler()
-	err := tmp.TmplSignUp.Execute(w, nil)
+	err := s.templates.TmplSignUp.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
 		return
@@ -150,8 +153,7 @@ func (s *Server) dashboardHandler() http.HandlerFunc {
 		user, _ := s.userstore.GetUserByID(tokenValue)
 		user.Entry, _ = s.bookstore.GetEntryByID(tokenValue)
 
-		tmp := templates.NewTemplateHandler()
-		err := tmp.TmplDashboard.Execute(w, user)
+		err := s.templates.TmplDashboard.Execute(w, user)
 		if err != nil {
 			w.WriteHeader(http.StatusBadGateway)
 			return
@@ -160,12 +162,24 @@ func (s *Server) dashboardHandler() http.HandlerFunc {
 	}
 }
 
-func createHandler(w http.ResponseWriter, r *http.Request) {
-	tmp := templates.NewTemplateHandler()
-	err := tmp.TmplCreate.Execute(w, nil)
+func (s *Server) createHandler(w http.ResponseWriter, r *http.Request) {
+	err := s.templates.TmplCreate.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
 		return
+	}
+}
+
+func (s *Server) createEntry() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		session, _ := r.Cookie("session")
+		userID, _ := s.tokenstore.GetTokenValue(session)
+		user, _ := s.userstore.GetUserByID(userID)
+		newEntry := model.GuestbookEntry{Name: user.Name, Message: html.EscapeString(r.FormValue("message")), UserID: user.ID}
+
+		s.bookstore.CreateEntry(&newEntry)
+		http.Redirect(w, r, "/user/dashboard", http.StatusFound)
 	}
 }
 
@@ -182,6 +196,12 @@ func (s *Server) loginAuth() http.HandlerFunc {
 		if err := bcrypt.CompareHashAndPassword(user.Password, []byte(r.FormValue("password"))); err != nil {
 			s.log.Error("error while comparing password", err)
 			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		if !user.IsVerified {
+			s.templates.TmplLogin.Execute(w, &user)
+			s.log.Error("Login error: User is not verified")
 			return
 		}
 
@@ -230,27 +250,17 @@ func (s *Server) signupAuth() http.HandlerFunc {
 		joinedName := strings.Join([]string{r.FormValue("firstname"), r.FormValue("lastname")}, " ")
 		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(r.Form.Get("password")), 14)
 		newUser := model.User{Email: html.EscapeString(r.FormValue("email")), Name: html.EscapeString(joinedName), Password: hashedpassword, IsAdmin: false}
-		debug, usererr := s.userstore.CreateUser(&newUser)
+		_, usererr := s.userstore.CreateUser(&newUser)
 		if usererr != nil {
 			s.log.Error("creation error: ", err)
 			http.Redirect(w, r, "signup", http.StatusFound)
 			w.WriteHeader(http.StatusUnauthorized)
 		}
-		debuguser, _ := s.userstore.GetUserByID(debug)
-		s.log.Debug(debuguser)
+		err = s.mailer.SendVerMail(&newUser, s.templates)
+		if err != nil {
+			s.log.Error("error executing template: ", err)
+			return
+		}
 		http.Redirect(w, r, "/login", http.StatusFound)
-	}
-}
-
-func (s *Server) createEntry() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
-		session, _ := r.Cookie("session")
-		userID, _ := s.tokenstore.GetTokenValue(session)
-		user, _ := s.userstore.GetUserByID(userID)
-		newEntry := model.GuestbookEntry{Name: user.Name, Message: html.EscapeString(r.FormValue("message")), UserID: user.ID}
-
-		s.bookstore.CreateEntry(&newEntry)
-		http.Redirect(w, r, "/user/dashboard", http.StatusFound)
 	}
 }

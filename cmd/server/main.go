@@ -2,12 +2,12 @@ package main
 
 import (
 	"flag"
-	"net/smtp"
 	"net/url"
 	"os"
 
 	"github.com/joho/godotenv"
 	v1 "github.com/led0nk/guestbook/api/v1"
+	templates "github.com/led0nk/guestbook/internal"
 	db "github.com/led0nk/guestbook/internal/database"
 	"github.com/led0nk/guestbook/internal/database/jsondb"
 	"github.com/led0nk/guestbook/internal/middleware"
@@ -55,10 +55,19 @@ func main() {
 	tokenStorage, _ := token.CreateTokenService()
 	tStore = tokenStorage
 
+	err = godotenv.Load(".env")
+	if err != nil {
+		panic("bad mailer env")
+	}
+
 	//protect from nil pointer
 	address := DerefString(addr)
-
-	server := v1.NewServer(address, logger, bStore, uStore, tStore, middleware.Logger(), middleware.Auth(tStore))
+	//create mailservice
+	mailer := v1.NewMailer(os.Getenv("EMAIL"), os.Getenv("SMTPPW"), os.Getenv("HOST"), os.Getenv("PORT"))
+	//create templatehandler
+	templates := templates.NewTemplateHandler()
+	//create Server
+	server := v1.NewServer(address, mailer, templates, logger, bStore, uStore, tStore, middleware.Logger(), middleware.Auth(tStore))
 	server.ServeHTTP()
 }
 
@@ -83,34 +92,5 @@ func checkFlag(flag *string, storage any) any {
 	default:
 
 	}
-	return nil
-}
-
-func SendVerMail(mailto string) error {
-	err := godotenv.Load(".env")
-	if err != nil {
-		return err
-	}
-	email := os.Getenv("EMAIL")
-	password := os.Getenv("SMTPPW")
-	host := os.Getenv("HOST")
-	port := os.Getenv("PORT")
-
-	auth := smtp.PlainAuth(
-		"",
-		email,
-		password,
-		host,
-	)
-
-	msg := "Subject: test\nTestMail."
-
-	smtp.SendMail(
-		host+":"+port,
-		auth,
-		email,
-		[]string{mailto},
-		[]byte(msg),
-	)
 	return nil
 }

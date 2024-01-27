@@ -12,6 +12,7 @@ type TemplateHandler struct {
 	TmplSignUp    *template.Template
 	TmplDashboard *template.Template
 	TmplCreate    *template.Template
+	TmplVerMail   *template.Template
 }
 
 //go:embed templates/*
@@ -26,6 +27,7 @@ func NewTemplateHandler() *TemplateHandler {
 	signupTemplate := "templates/signup.html"
 	dashboardTemplate := "templates/dashboard.html"
 	createTemplate := "templates/create.html"
+	verificationTemplate := []string{"templates/verMail.html"}
 
 	return &TemplateHandler{
 		TmplHome:      template.Must(template.ParseFS(templates, append(loggedoutTemplates, homeTemplate)...)),
@@ -34,5 +36,6 @@ func NewTemplateHandler() *TemplateHandler {
 		TmplSignUp:    template.Must(template.ParseFS(templates, append(loggedoutTemplates, signupTemplate)...)),
 		TmplDashboard: template.Must(template.ParseFS(templates, append(loggedinTemplates, dashboardTemplate)...)),
 		TmplCreate:    template.Must(template.ParseFS(templates, append(loggedinTemplates, createTemplate)...)),
+		TmplVerMail:   template.Must(template.ParseFS(templates, verificationTemplate...)),
 	}
 }
