@@ -126,3 +126,11 @@ func ValidateUserInput(v url.Values) error {
 	}
 	return nil
 }
+
+func (u *UserStorage) GetUserByToken(token string) (*model.User, error) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	returnvalue := *&model.User{}
+
+	return &returnvalue, nil
+}

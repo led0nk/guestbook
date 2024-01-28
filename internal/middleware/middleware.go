@@ -52,12 +52,6 @@ func Auth(t db.TokenStore) mux.MiddlewareFunc {
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
-			exists := session.Value
-			if exists == "" {
-				log.Info("authentication failed, no tokens available for session")
-				http.Redirect(w, r, "/login", http.StatusFound)
-				return
-			}
 
 			isValid, err := t.Valid(session.Value)
 			if !isValid {

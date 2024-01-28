@@ -9,6 +9,7 @@ import (
 	templates "github.com/led0nk/guestbook/internal"
 	db "github.com/led0nk/guestbook/internal/database"
 	"github.com/led0nk/guestbook/internal/database/jsondb"
+	"github.com/led0nk/guestbook/internal/mailer"
 	"github.com/led0nk/guestbook/internal/middleware"
 	"github.com/led0nk/guestbook/token"
 	"github.com/sirupsen/logrus"
@@ -62,15 +63,17 @@ func main() {
 
 	//protect from nil pointer
 	address := DerefString(addr)
-	//create mailservice
 
 	//create templatehandler
 	templates := templates.NewTemplateHandler()
+	//create mailerservice
+	mailer := mailer.NewMailer("test", "test", "test", "test")
 	//create Server
-	server := v1.NewServer(address, templates, logger, bStore, uStore, tStore, middleware.Logger(), middleware.Auth(tStore))
+	server := v1.NewServer(address, mailer, templates, logger, bStore, uStore, tStore, middleware.Logger(), middleware.Auth(tStore))
 	server.ServeHTTP()
 }
 
+// protection from nil pointers
 func DerefString(s *string) string {
 	if s != nil {
 		return *s

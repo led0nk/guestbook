@@ -19,6 +19,7 @@ import (
 
 type Server struct {
 	addr       string
+	mailer     Mailerservice
 	templates  *templates.TemplateHandler
 	log        logrus.FieldLogger
 	mw         []mux.MiddlewareFunc
@@ -29,6 +30,7 @@ type Server struct {
 
 func NewServer(
 	address string,
+	mailer Mailerservice,
 	templates *templates.TemplateHandler,
 	logger logrus.FieldLogger,
 	bStore db.GuestBookStore,
@@ -38,6 +40,7 @@ func NewServer(
 ) *Server {
 	return &Server{
 		addr:       address,
+		mailer:     mailer,
 		templates:  templates,
 		log:        logger,
 		mw:         middleware,
@@ -50,6 +53,7 @@ func NewServer(
 func (s *Server) ServeHTTP() {
 	// has to be called in main including above initialisations
 	router := mux.NewRouter()
+
 	authMiddleware := mux.NewRouter().PathPrefix("/user").Subrouter()
 	authMiddleware.Use(middleware.Auth(s.tokenstore))
 	router.Use(middleware.Logger())
@@ -244,7 +248,7 @@ func (s *Server) logout() http.HandlerFunc {
 }
 
 // signup authentication and validation of user input
-func (s *Server) signupAuth(m Mailersvc) http.HandlerFunc {
+func (s *Server) signupAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		err := jsondb.ValidateUserInput(r.Form)
@@ -262,7 +266,7 @@ func (s *Server) signupAuth(m Mailersvc) http.HandlerFunc {
 			http.Redirect(w, r, "signup", http.StatusFound)
 			w.WriteHeader(http.StatusUnauthorized)
 		}
-		err = m.SendVerMail(&newUser, s.templates)
+		err = s.mailer.SendVerMail(&newUser, s.templates)
 		if err != nil {
 			s.log.Error("error executing template: ", err)
 			return
@@ -273,6 +277,12 @@ func (s *Server) signupAuth(m Mailersvc) http.HandlerFunc {
 
 func (s *Server) verifyAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
 
+		if r.FormValue("code") != "code" {
+			s.log.Error("Verification Error: Wrong Verification Code")
+			return
+		}
+		http.Redirect(w, r, "/login", http.StatusFound)
 	}
 }
