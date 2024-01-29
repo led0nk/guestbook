@@ -268,7 +268,7 @@ func (s *Server) signupAuth() http.HandlerFunc {
 		}
 		err = s.mailer.SendVerMail(&newUser, s.templates)
 		if err != nil {
-			s.log.Error("error executing template: ", err)
+			s.log.Error("Mailer Error: ", err)
 			return
 		}
 		http.Redirect(w, r, "/verify", http.StatusFound)
@@ -278,7 +278,7 @@ func (s *Server) signupAuth() http.HandlerFunc {
 func (s *Server) verifyAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-
+    s.log.Info(mux.Vars(r))
 		if r.FormValue("code") != "code" {
 			s.log.Error("Verification Error: Wrong Verification Code")
 			return
