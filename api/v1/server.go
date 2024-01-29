@@ -81,7 +81,7 @@ func (s *Server) ServeHTTP() {
 	}
 	err := srv.ListenAndServe()
 	if err != nil {
-		// log.Fatal(err)
+		s.log.Fatal(err)
 	}
 }
 

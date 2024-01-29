@@ -3,9 +3,11 @@ package main
 import (
 	"flag"
 	"net/url"
+	"os"
 
 	"github.com/joho/godotenv"
 	v1 "github.com/led0nk/guestbook/api/v1"
+	"github.com/led0nk/guestbook/cmd/utils"
 	templates "github.com/led0nk/guestbook/internal"
 	db "github.com/led0nk/guestbook/internal/database"
 	"github.com/led0nk/guestbook/internal/database/jsondb"
@@ -17,7 +19,6 @@ import (
 )
 
 func main() {
-
 	logger := logrus.New()
 	log.SetFormatter(&log.TextFormatter{
 		FullTimestamp:   true,
@@ -33,7 +34,6 @@ func main() {
 		uStore db.UserStore
 		tStore db.TokenStore
 	)
-
 	flag.Parse()
 	u, err := url.Parse(*entryStr)
 	if err != nil {
@@ -60,40 +60,16 @@ func main() {
 	if err != nil {
 		panic("bad mailer env")
 	}
-
 	//protect from nil pointer
-	address := DerefString(addr)
+	address := utils.DerefString(addr)
 
 	//create templatehandler
 	templates := templates.NewTemplateHandler()
 	//create mailerservice
-	mailer := mailer.NewMailer("test", "test", "test", "test")
+	mailer := mailer.NewMailer(os.Getenv("MAIL"), os.Getenv("SMTPPW"), os.Getenv("HOST"), os.Getenv("PORT"))
 	//create Server
 	server := v1.NewServer(address, mailer, templates, logger, bStore, uStore, tStore, middleware.Logger(), middleware.Auth(tStore))
 	server.ServeHTTP()
 }
 
-// protection from nil pointers
-func DerefString(s *string) string {
-	if s != nil {
-		return *s
-	}
-	return ""
-}
 
-// TODO
-func checkFlag(flag *string, storage any) any {
-	path, err := url.Parse(*flag)
-	if err != nil {
-		panic(err)
-	}
-	log.Info(path)
-	switch path.Scheme {
-	case "file":
-		log.Info("opening: ", path.Host+path.Path)
-
-	default:
-
-	}
-	return nil
-}
