@@ -20,10 +20,12 @@ type UserStore interface {
 	CreateUser(*model.User) (uuid.UUID, error)
 	GetUserByEmail(string) (*model.User, error)
 	GetUserByID(uuid.UUID) (*model.User, error)
+	UpdateUser(*model.User) error
+	CreateVerificationCode(uuid.UUID) error
 }
 
 type TokenStore interface {
-	CreateToken(uuid.UUID) (*http.Cookie, error)
+	CreateToken(string, uuid.UUID) (*http.Cookie, error)
 	DeleteToken(uuid.UUID) error
 	GetTokenValue(*http.Cookie) (uuid.UUID, error)
 	Valid(string) (bool, error)

@@ -1,4 +1,15 @@
 {
+	"22b3d687-b604-4d40-a4af-329c2686949b": {
+		"id": "22b3d687-b604-4d40-a4af-329c2686949b",
+		"email": "adam@peters.com",
+		"name": "Adam Peters",
+		"password": "JDJhJDE0JDd0Vmx4ZmJlV3NwUzQwV1R3VmhoanVRVzFORjc2ckZpeWtNVkZwbktYM3VqN21jNUtkQjND",
+		"entry": null,
+		"isadmin": false,
+		"isverified": false,
+		"verificationstring": "3C85mh",
+		"expirationtime": "2024-01-30T12:17:26.13681054+01:00"
+	},
 	"35b35bed-3421-4967-8294-25a7d2d566bc": {
 		"id": "35b35bed-3421-4967-8294-25a7d2d566bc",
 		"email": "serious@sam.de",
@@ -64,6 +75,17 @@
 		"isverified": false,
 		"verificationstring": "",
 		"expirationtime": "0001-01-01T00:00:00Z"
+	},
+	"916a67ea-5833-49f8-b94d-fd6f74918b0d": {
+		"id": "916a67ea-5833-49f8-b94d-fd6f74918b0d",
+		"email": "adam@sandler.com",
+		"name": "Adam Sandler",
+		"password": "JDJhJDE0JE9KYXdpTnAwYnRGNjFGcEU1TEZyTS5UTXlzQ05CQWtya1gzYjVrMW1VUG9jVTZQdzVtVHUu",
+		"entry": null,
+		"isadmin": false,
+		"isverified": false,
+		"verificationstring": "lcSNUT",
+		"expirationtime": "2024-01-30T12:26:55.151347485+01:00"
 	},
 	"9a8b1dc9-088a-4091-9220-3b3842305314": {
 		"id": "9a8b1dc9-088a-4091-9220-3b3842305314",

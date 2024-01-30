@@ -5,9 +5,11 @@ import (
 	"html"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/led0nk/guestbook/cmd/utils"
 	templates "github.com/led0nk/guestbook/internal"
 	db "github.com/led0nk/guestbook/internal/database"
 	"github.com/led0nk/guestbook/internal/database/jsondb"
@@ -114,7 +116,11 @@ func (s *Server) delete() http.HandlerFunc {
 		uuidStr, _ := uuid.Parse(strUuid)
 
 		deleteEntry := model.GuestbookEntry{ID: uuidStr}
-		s.bookstore.DeleteEntry(deleteEntry.ID)
+		err := s.bookstore.DeleteEntry(deleteEntry.ID)
+		if err != nil {
+			s.log.Error("Entry Error: ", err)
+			return
+		}
 		http.Redirect(w, r, "/", http.StatusFound)
 
 	}
@@ -178,6 +184,29 @@ func (s *Server) verifyHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
 		return
 	}
+
+	var cookie *http.Cookie
+	var ID uuid.UUID
+	cookie, err = r.Cookie("verification")
+	if err != nil {
+		s.log.Error("Cookie Error: ", err)
+		http.Redirect(w, r, "/signup", http.StatusFound)
+		return
+	}
+
+	ID, err = s.tokenstore.GetTokenValue(cookie)
+	if err != nil {
+		s.log.Error("Token Error: ", err)
+		return
+	}
+
+	_, err = s.userstore.GetUserByID(ID)
+	if err != nil {
+		s.log.Error("User Error: ", err)
+		http.Redirect(w, r, "/signup", http.StatusFound)
+		return
+	}
+
 }
 
 func (s *Server) createEntry() http.HandlerFunc {
@@ -188,7 +217,11 @@ func (s *Server) createEntry() http.HandlerFunc {
 		user, _ := s.userstore.GetUserByID(userID)
 		newEntry := model.GuestbookEntry{Name: user.Name, Message: html.EscapeString(r.FormValue("message")), UserID: user.ID}
 
-		s.bookstore.CreateEntry(&newEntry)
+		_, err := s.bookstore.CreateEntry(&newEntry)
+		if err != nil {
+			s.log.Error("Entry Error: ", err)
+			return
+		}
 		http.Redirect(w, r, "/user/dashboard", http.StatusFound)
 	}
 }
@@ -210,12 +243,16 @@ func (s *Server) loginAuth() http.HandlerFunc {
 		}
 
 		if !user.IsVerified {
-			s.templates.TmplLogin.Execute(w, &user)
+			err := s.templates.TmplLogin.Execute(w, &user)
+			if err != nil {
+				s.log.Error("Template Error: ", err)
+				return
+			}
 			s.log.Error("Login error: User is not verified")
 			return
 		}
 
-		cookie, err := s.tokenstore.CreateToken(user.ID)
+		cookie, err := s.tokenstore.CreateToken("session", user.ID)
 		if err != nil {
 			s.log.Error(err)
 			return
@@ -240,7 +277,11 @@ func (s *Server) logout() http.HandlerFunc {
 			}
 		}
 		userID, _ := s.tokenstore.GetTokenValue(cookie)
-		s.tokenstore.DeleteToken(userID)
+		err = s.tokenstore.DeleteToken(userID)
+		if err != nil {
+			s.log.Error("Token Error: ", err)
+			return
+		}
 		cookie.MaxAge = -1
 		http.SetCookie(w, cookie)
 		http.Redirect(w, r, "/login", http.StatusFound)
@@ -259,18 +300,35 @@ func (s *Server) signupAuth() http.HandlerFunc {
 		}
 		joinedName := strings.Join([]string{r.FormValue("firstname"), r.FormValue("lastname")}, " ")
 		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(r.Form.Get("password")), 14)
-		newUser := model.User{Email: html.EscapeString(r.FormValue("email")), Name: html.EscapeString(joinedName), Password: hashedpassword, IsAdmin: false}
-		_, usererr := s.userstore.CreateUser(&newUser)
+		newUser := model.User{
+			Email:            html.EscapeString(r.FormValue("email")),
+			Name:             html.EscapeString(joinedName),
+			Password:         hashedpassword,
+			IsAdmin:          false,
+			IsVerified:       false,
+			VerificationCode: utils.RandomString(6),
+			ExpirationTime:   time.Now().Add(time.Minute * 5),
+		}
+		userID, usererr := s.userstore.CreateUser(&newUser)
 		if usererr != nil {
 			s.log.Error("creation error: ", err)
 			http.Redirect(w, r, "signup", http.StatusFound)
 			w.WriteHeader(http.StatusUnauthorized)
 		}
+
+		var cookie *http.Cookie
+		cookie, err = s.tokenstore.CreateToken("verification", userID)
+		if err != nil {
+			s.log.Error("Token Error: ", err)
+			return
+		}
+
 		err = s.mailer.SendVerMail(&newUser, s.templates)
 		if err != nil {
 			s.log.Error("Mailer Error: ", err)
 			return
 		}
+		http.SetCookie(w, cookie)
 		http.Redirect(w, r, "/verify", http.StatusFound)
 	}
 }
@@ -278,9 +336,37 @@ func (s *Server) signupAuth() http.HandlerFunc {
 func (s *Server) verifyAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-    s.log.Info(mux.Vars(r))
-		if r.FormValue("code") != "code" {
+		cookie, err := r.Cookie("verification")
+		if err != nil {
+			s.log.Error("Cookie error: ", err)
+			return
+		}
+
+		var userID uuid.UUID
+		var user *model.User
+		userID, err = s.tokenstore.GetTokenValue(cookie)
+		if err != nil {
+			s.log.Error("Token Error: ", err)
+			return
+		}
+		user, err = s.userstore.GetUserByID(userID)
+		if err != nil {
+			s.log.Error("User Error: ", err)
+			return
+		}
+		if !time.Now().Before(user.ExpirationTime) { //TODO: delete user from userstore
+			s.log.Error("Verification Error: Time is expired")
+			http.Redirect(w, r, "/signup", http.StatusFound)
+			return
+		}
+		if r.FormValue("code") != user.VerificationCode {
 			s.log.Error("Verification Error: Wrong Verification Code")
+			return
+		}
+		user.IsVerified = true
+		err = s.userstore.UpdateUser(user)
+		if err != nil {
+			s.log.Error("User Error: ", err)
 			return
 		}
 		http.Redirect(w, r, "/login", http.StatusFound)

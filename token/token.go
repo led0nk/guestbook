@@ -27,7 +27,7 @@ func CreateTokenService() (*TokenStorage, error) {
 	return tokenService, nil
 }
 
-func (t *TokenStorage) CreateToken(ID uuid.UUID) (*http.Cookie, error) {
+func (t *TokenStorage) CreateToken(session string, ID uuid.UUID) (*http.Cookie, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if ID == uuid.Nil {
@@ -47,7 +47,7 @@ func (t *TokenStorage) CreateToken(ID uuid.UUID) (*http.Cookie, error) {
 	t.Tokens[ID] = tokenStruct
 
 	cookie := http.Cookie{
-		Name:    "session",
+		Name:    session,
 		Value:   tokenString,
 		Path:    "/",
 		Expires: expiration,

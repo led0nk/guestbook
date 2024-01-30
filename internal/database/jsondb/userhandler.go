@@ -8,8 +8,10 @@ import (
 	"net/url"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/led0nk/guestbook/cmd/utils"
 	"github.com/led0nk/guestbook/internal/model"
 )
 
@@ -71,6 +73,30 @@ func (u *UserStorage) CreateUser(user *model.User) (uuid.UUID, error) {
 	}
 
 	return user.ID, nil
+}
+
+// maybe only for expired ExpTime and Reverification
+func (u *UserStorage) CreateVerificationCode(userID uuid.UUID) error {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	if userID == uuid.Nil {
+		return errors.New("User ID is empty")
+	}
+	u.user[userID].VerificationCode = utils.RandomString(6)
+	u.user[userID].ExpirationTime = time.Now().Add(time.Minute * 5)
+	return nil
+}
+
+func (u *UserStorage) UpdateUser(user *model.User) error {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	u.user[user.ID] = user
+	if err := u.writeUserJSON(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (u *UserStorage) GetUserByEmail(email string) (*model.User, error) {
