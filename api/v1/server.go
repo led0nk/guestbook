@@ -4,6 +4,7 @@ import (
 	"errors"
 	"html"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -184,7 +185,7 @@ func (s *Server) verifyHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
 		return
 	}
-
+	s.log.Info(mux.Vars(r))
 	var cookie *http.Cookie
 	var ID uuid.UUID
 	cookie, err = r.Cookie("verification")
@@ -328,22 +329,29 @@ func (s *Server) signupAuth() http.HandlerFunc {
 			return
 		}
 		http.SetCookie(w, cookie)
-		// joinedURL, _ := url.JoinPath("/verify", userID.String())
-		// joinedQuery := r.URL.Query().Add("id", "1234")
-		r.URL.Query().Add("id", "test")
-		s.log.Info(r.URL.Query())
-		s.log.Info(mux.Vars(r))
-		http.Redirect(w, r, "/verify", http.StatusFound)
+		//r.URL.RawQuery = url.Values{
+		//	"id": {userID.String()},
+		//}.Encode()
+		joinedPath, _ := url.JoinPath("/verify", userID.String())
+		http.Redirect(w, r, joinedPath, http.StatusFound)
 	}
 }
 
 func (s *Server) verifyAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-		mux.Vars(r)
-		var userID uuid.UUID
-
-		s.userstore.CodeValidation(userID, r.FormValue("code"))
+		varstring := mux.Vars(r)
+		userID, _ := uuid.Parse(varstring["ID"])
+		ok, err := s.userstore.CodeValidation(userID, r.FormValue("code"))
+		if ok != true {
+			http.Redirect(w, r, r.URL.RawPath, http.StatusFound)
+			s.log.Info("User: Validation Code not correct")
+			return
+		}
+		if err != nil {
+			s.log.Error("User Error:", err)
+			return
+		}
 		http.Redirect(w, r, "/login", http.StatusFound)
 	}
 }
