@@ -22,6 +22,7 @@ type UserStore interface {
 	GetUserByID(uuid.UUID) (*model.User, error)
 	UpdateUser(*model.User) error
 	CreateVerificationCode(uuid.UUID) error
+	CodeValidation(uuid.UUID, string) (bool, error)
 }
 
 type TokenStore interface {

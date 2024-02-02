@@ -71,5 +71,3 @@ func main() {
 	server := v1.NewServer(address, mailer, templates, logger, bStore, uStore, tStore, middleware.Logger(), middleware.Auth(tStore))
 	server.ServeHTTP()
 }
-
-

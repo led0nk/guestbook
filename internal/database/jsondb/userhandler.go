@@ -3,7 +3,6 @@ package jsondb
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/mail"
 	"net/url"
 	"os"
@@ -50,8 +49,7 @@ func (u *UserStorage) writeUserJSON() error {
 // read JSON data from file = filename
 func (u *UserStorage) readUserJSON() error {
 	if _, err := os.Stat(u.filename); os.IsNotExist(err) {
-		fmt.Println("file does not exist", err)
-		return nil
+		return errors.New("file does not exist")
 	}
 	data, err := os.ReadFile(u.filename)
 	if err != nil {
@@ -159,4 +157,45 @@ func (u *UserStorage) GetUserByToken(token string) (*model.User, error) {
 	returnvalue := &model.User{}
 
 	return returnvalue, nil
+}
+
+func (u *UserStorage) CodeValidation(ID uuid.UUID, code string) (bool, error) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	user, err := u.GetUserByID(ID)
+	if err != nil {
+		return false, err
+	}
+	if !time.Now().Before(user.ExpirationTime) {
+		u.DeleteUser(ID)
+		return false, errors.New("Verification Code expired")
+	}
+	if user.VerificationCode != code {
+		return false, errors.New("Wrong Verification Code")
+	}
+	user.IsVerified = true
+	u.UpdateUser(user)
+	return true, nil
+}
+
+// delete Entry from storage and write to JSON
+func (u *UserStorage) DeleteUser(ID uuid.UUID) error {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if ID == uuid.Nil {
+		return errors.New("requires an entryID")
+	}
+	if _, exists := u.user[ID]; !exists {
+		err := errors.New("entry doesn't exist")
+		return err
+	}
+
+	delete(u.user, ID)
+
+	if err := u.writeUserJSON(); err != nil {
+		return err
+	}
+
+	return nil
 }

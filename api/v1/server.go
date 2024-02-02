@@ -68,8 +68,8 @@ func (s *Server) ServeHTTP() {
 	router.HandleFunc("/logout", s.logout()).Methods(http.MethodGet)
 	router.HandleFunc("/signup", s.signupHandler).Methods(http.MethodGet)
 	router.HandleFunc("/signup", s.signupAuth()).Methods(http.MethodPost)
-	router.HandleFunc("/verify", s.verifyHandler).Methods(http.MethodGet)
-	router.HandleFunc("/verify", s.verifyAuth()).Methods(http.MethodPost)
+	router.HandleFunc("/verify/{ID}", s.verifyHandler).Methods(http.MethodGet)
+	router.HandleFunc("/verify/{ID}", s.verifyAuth()).Methods(http.MethodPut)
 	// routing through authentication via /user
 	authMiddleware.HandleFunc("/dashboard", s.dashboardHandler()).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/create", s.createHandler).Methods(http.MethodGet)
@@ -322,13 +322,17 @@ func (s *Server) signupAuth() http.HandlerFunc {
 			s.log.Error("Token Error: ", err)
 			return
 		}
-
 		err = s.mailer.SendVerMail(&newUser, s.templates)
 		if err != nil {
 			s.log.Error("Mailer Error: ", err)
 			return
 		}
 		http.SetCookie(w, cookie)
+		// joinedURL, _ := url.JoinPath("/verify", userID.String())
+		// joinedQuery := r.URL.Query().Add("id", "1234")
+		r.URL.Query().Add("id", "test")
+		s.log.Info(r.URL.Query())
+		s.log.Info(mux.Vars(r))
 		http.Redirect(w, r, "/verify", http.StatusFound)
 	}
 }
@@ -336,39 +340,10 @@ func (s *Server) signupAuth() http.HandlerFunc {
 func (s *Server) verifyAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-		cookie, err := r.Cookie("verification")
-		if err != nil {
-			s.log.Error("Cookie error: ", err)
-			return
-		}
-
+		mux.Vars(r)
 		var userID uuid.UUID
-		var user *model.User
-		userID, err = s.tokenstore.GetTokenValue(cookie)
-		if err != nil {
-			s.log.Error("Token Error: ", err)
-			return
-		}
-		user, err = s.userstore.GetUserByID(userID)
-		if err != nil {
-			s.log.Error("User Error: ", err)
-			return
-		}
-		if !time.Now().Before(user.ExpirationTime) { //TODO: delete user from userstore
-			s.log.Error("Verification Error: Time is expired")
-			http.Redirect(w, r, "/signup", http.StatusFound)
-			return
-		}
-		if r.FormValue("code") != user.VerificationCode {
-			s.log.Error("Verification Error: Wrong Verification Code")
-			return
-		}
-		user.IsVerified = true
-		err = s.userstore.UpdateUser(user)
-		if err != nil {
-			s.log.Error("User Error: ", err)
-			return
-		}
+
+		s.userstore.CodeValidation(userID, r.FormValue("code"))
 		http.Redirect(w, r, "/login", http.StatusFound)
 	}
 }

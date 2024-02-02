@@ -3,7 +3,6 @@ package jsondb
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"sort"
 	"sync"
@@ -84,8 +83,7 @@ func (b *BookStorage) writeJSON() error {
 // read JSON data from file = filename
 func (b *BookStorage) readJSON() error {
 	if _, err := os.Stat(b.filename); os.IsNotExist(err) {
-		fmt.Println("file does not exist", err)
-		return nil
+		return errors.New("file does not exist")
 	}
 	data, err := os.ReadFile(b.filename)
 	if err != nil {
