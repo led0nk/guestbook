@@ -70,7 +70,7 @@ func (s *Server) ServeHTTP() {
 	router.HandleFunc("/signup", s.signupHandler).Methods(http.MethodGet)
 	router.HandleFunc("/signup", s.signupAuth()).Methods(http.MethodPost)
 	router.HandleFunc("/verify/{ID}", s.verifyHandler).Methods(http.MethodGet)
-	router.HandleFunc("/verify/{ID}", s.verifyAuth()).Methods(http.MethodPut)
+	router.HandleFunc("/verify/{ID}", s.verifyAuth()).Methods(http.MethodPost)
 	// routing through authentication via /user
 	authMiddleware.HandleFunc("/dashboard", s.dashboardHandler()).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/create", s.createHandler).Methods(http.MethodGet)
@@ -186,28 +186,6 @@ func (s *Server) verifyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.log.Info(mux.Vars(r))
-	var cookie *http.Cookie
-	var ID uuid.UUID
-	cookie, err = r.Cookie("verification")
-	if err != nil {
-		s.log.Error("Cookie Error: ", err)
-		http.Redirect(w, r, "/signup", http.StatusFound)
-		return
-	}
-
-	ID, err = s.tokenstore.GetTokenValue(cookie)
-	if err != nil {
-		s.log.Error("Token Error: ", err)
-		return
-	}
-
-	_, err = s.userstore.GetUserByID(ID)
-	if err != nil {
-		s.log.Error("User Error: ", err)
-		http.Redirect(w, r, "/signup", http.StatusFound)
-		return
-	}
-
 }
 
 func (s *Server) createEntry() http.HandlerFunc {
@@ -313,7 +291,7 @@ func (s *Server) signupAuth() http.HandlerFunc {
 		userID, usererr := s.userstore.CreateUser(&newUser)
 		if usererr != nil {
 			s.log.Error("creation error: ", err)
-			http.Redirect(w, r, "signup", http.StatusFound)
+			http.Redirect(w, r, "/signup", http.StatusFound)
 			w.WriteHeader(http.StatusUnauthorized)
 		}
 
@@ -329,9 +307,6 @@ func (s *Server) signupAuth() http.HandlerFunc {
 			return
 		}
 		http.SetCookie(w, cookie)
-		//r.URL.RawQuery = url.Values{
-		//	"id": {userID.String()},
-		//}.Encode()
 		joinedPath, _ := url.JoinPath("/verify", userID.String())
 		http.Redirect(w, r, joinedPath, http.StatusFound)
 	}
@@ -341,9 +316,10 @@ func (s *Server) verifyAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		varstring := mux.Vars(r)
+		s.log.Info(mux.Vars(r))
 		userID, _ := uuid.Parse(varstring["ID"])
 		ok, err := s.userstore.CodeValidation(userID, r.FormValue("code"))
-		if ok != true {
+		if !ok {
 			http.Redirect(w, r, r.URL.RawPath, http.StatusFound)
 			s.log.Info("User: Validation Code not correct")
 			return

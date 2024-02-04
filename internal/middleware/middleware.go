@@ -73,3 +73,13 @@ func Auth(t db.TokenStore) mux.MiddlewareFunc {
 		})
 	}
 }
+
+func AdminAuth(t db.TokenStore) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			Auth(t)
+			log.Info("Admin checked")
+			next.ServeHTTP(w, r)
+		})
+	}
+}
