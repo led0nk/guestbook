@@ -67,7 +67,7 @@ func (s *Server) ServeHTTP() {
 	router.HandleFunc("/", s.delete()).Methods(http.MethodPost)
 	router.HandleFunc("/login", s.loginHandler).Methods(http.MethodGet)
 	router.HandleFunc("/login", s.loginAuth()).Methods(http.MethodPost)
-	router.HandleFunc("/logout", s.logout()).Methods(http.MethodGet)
+	router.HandleFunc("/logout", s.logoutAuth()).Methods(http.MethodGet)
 	router.HandleFunc("/signup", s.signupHandler).Methods(http.MethodGet)
 	router.HandleFunc("/signup", s.signupAuth()).Methods(http.MethodPost)
 	router.HandleFunc("/verify", s.verifyHandler).Methods(http.MethodGet)
@@ -78,7 +78,7 @@ func (s *Server) ServeHTTP() {
 	authMiddleware.HandleFunc("/search", s.searchHandler).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/create", s.createEntry()).Methods(http.MethodPost)
 	// routing through admincheck via /admin
-	adminMiddleware.HandleFunc("/admin", s.adminHandler).Methods(http.MethodGet)
+	adminMiddleware.HandleFunc("/dashboard", s.adminHandler).Methods(http.MethodGet)
 	// log.Info("listening to: ")
 
 	srv := &http.Server{
@@ -122,7 +122,7 @@ func (s *Server) delete() http.HandlerFunc {
 		deleteEntry := model.GuestbookEntry{ID: uuidStr}
 		err := s.bookstore.DeleteEntry(deleteEntry.ID)
 		if err != nil {
-			s.log.Error("Entry Error: ", err)
+			s.log.Warn("Entry Error: ", err)
 			return
 		}
 		http.Redirect(w, r, "/", http.StatusFound)
@@ -192,9 +192,11 @@ func (s *Server) verifyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) adminHandler(w http.ResponseWriter, r *http.Request) {
-    return func(w http.ResponseWriter, r *http.Request){
-    err := s.templates.
-  }
+	err := s.templates.TmplAdmin.Execute(w, nil)
+	if err != nil {
+		w.WriteHeader(http.StatusBadGateway)
+		return
+	}
 }
 
 func (s *Server) createEntry() http.HandlerFunc {
@@ -207,7 +209,7 @@ func (s *Server) createEntry() http.HandlerFunc {
 
 		_, err := s.bookstore.CreateEntry(&newEntry)
 		if err != nil {
-			s.log.Error("Entry Error: ", err)
+			s.log.Warn("Entry Error: ", err)
 			return
 		}
 		http.Redirect(w, r, "/user/dashboard", http.StatusFound)
@@ -220,20 +222,20 @@ func (s *Server) loginAuth() http.HandlerFunc {
 		email := r.FormValue("email")
 		user, error := s.userstore.GetUserByEmail(email)
 		if error != nil {
-			s.log.Error("User Error: ", error)
+			s.log.Warn("User Error: ", error)
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword(user.Password, []byte(r.FormValue("password"))); err != nil {
-			s.log.Error("Hashing Error: ", err)
+			s.log.Warn("Hashing Error: ", err)
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
 		cookie, err := s.tokenstore.CreateToken("session", user.ID)
 		if err != nil {
-			s.log.Error(err)
+			s.log.Warn("Token Error: ", err)
 			return
 		}
 
@@ -242,8 +244,8 @@ func (s *Server) loginAuth() http.HandlerFunc {
 	}
 }
 
-// logout and deleting session-cookie
-func (s *Server) logout() http.HandlerFunc {
+// logoutAuth and deleting session-cookie
+func (s *Server) logoutAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("session")
 		if err != nil {
@@ -251,14 +253,14 @@ func (s *Server) logout() http.HandlerFunc {
 			case errors.Is(err, http.ErrNoCookie):
 				http.Error(w, "cookie not found", http.StatusBadRequest)
 			default:
-				s.log.Error(err)
+				s.log.Warn(err)
 				http.Error(w, "server error", http.StatusInternalServerError)
 			}
 		}
 		userID, _ := s.tokenstore.GetTokenValue(cookie)
 		err = s.tokenstore.DeleteToken(userID)
 		if err != nil {
-			s.log.Error("Token Error: ", err)
+			s.log.Warn("Token Error: ", err)
 			return
 		}
 		cookie.MaxAge = -1
@@ -273,7 +275,7 @@ func (s *Server) signupAuth() http.HandlerFunc {
 		r.ParseForm()
 		err := jsondb.ValidateUserInput(r.Form)
 		if err != nil {
-			s.log.Error("user form not valid: ", err)
+			s.log.Warn("Input Error: ", err)
 			http.Redirect(w, r, "/signup", http.StatusFound)
 			return
 		}
@@ -290,7 +292,7 @@ func (s *Server) signupAuth() http.HandlerFunc {
 		}
 		userID, usererr := s.userstore.CreateUser(&newUser)
 		if usererr != nil {
-			s.log.Error("creation error: ", err)
+			s.log.Warn("User error: ", err)
 			http.Redirect(w, r, "/signup", http.StatusFound)
 			w.WriteHeader(http.StatusUnauthorized)
 		}
@@ -298,12 +300,12 @@ func (s *Server) signupAuth() http.HandlerFunc {
 		var cookie *http.Cookie
 		cookie, err = s.tokenstore.CreateToken("verification", userID)
 		if err != nil {
-			s.log.Error("Token Error: ", err)
+			s.log.Warn("Token Error: ", err)
 			return
 		}
 		err = s.mailer.SendVerMail(&newUser, s.templates)
 		if err != nil {
-			s.log.Error("Mailer Error: ", err)
+			s.log.Warn("Mailer Error: ", err)
 			return
 		}
 		http.SetCookie(w, cookie)

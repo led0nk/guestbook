@@ -115,16 +115,21 @@ func (u *UserStorage) GetUserByEmail(email string) (*model.User, error) {
 }
 
 func (u *UserStorage) GetUserByID(ID uuid.UUID) (*model.User, error) {
+	//TODO in DEBUGGING state, seems to loop
+	fmt.Println("Beginning of GetUserByID")
 	u.mu.Lock()
+	fmt.Println("after mutex Lock")
 	defer u.mu.Unlock()
+	fmt.Println("before uuid == nil")
 	if ID == uuid.Nil {
+		fmt.Println("in uuid == nil")
 		return nil, errors.New("UUID empty")
 	}
-
 	users := &model.User{}
 	for _, user := range u.user {
 		if user.ID == ID {
 			users = user
+			fmt.Println(user)
 		}
 	}
 	return users, nil
