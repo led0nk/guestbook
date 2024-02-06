@@ -163,10 +163,12 @@ func (u *UserStorage) GetUserByToken(token string) (*model.User, error) {
 func (u *UserStorage) CodeValidation(ID uuid.UUID, code string) (bool, error) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
+	fmt.Println("before get user by id")
 	user, err := u.GetUserByID(ID)
 	if err != nil {
 		return false, err
 	}
+	fmt.Println("after get user by id")
 	if !time.Now().Before(user.ExpirationTime) {
 		u.DeleteUser(ID)
 		return false, errors.New("Verification Code expired")

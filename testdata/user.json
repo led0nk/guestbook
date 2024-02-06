@@ -54,6 +54,17 @@
 		"verificationstring": "ErcZy8",
 		"expirationtime": "2024-02-01T15:16:03.216287469+01:00"
 	},
+	"1ce19288-93bc-4f48-b32f-ea5efd07e234": {
+		"id": "1ce19288-93bc-4f48-b32f-ea5efd07e234",
+		"email": "new@member.com",
+		"name": "New Member",
+		"password": "JDJhJDE0JHcwMC4yaG1NbHhGTVM5UnJ0R3VUM2V3ZDdEZkxXdzB5ZWo3NkU5UjQ1eFFTT3c1S0NpUEYy",
+		"entry": null,
+		"isadmin": false,
+		"isverified": false,
+		"verificationstring": "e0C5Yb",
+		"expirationtime": "2024-02-06T12:13:32.977974734+01:00"
+	},
 	"22b3d687-b604-4d40-a4af-329c2686949b": {
 		"id": "22b3d687-b604-4d40-a4af-329c2686949b",
 		"email": "adam@peters.com",

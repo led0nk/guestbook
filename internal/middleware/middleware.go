@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	db "github.com/led0nk/guestbook/internal/database"
 	log "github.com/sirupsen/logrus"
@@ -74,10 +75,40 @@ func Auth(t db.TokenStore) mux.MiddlewareFunc {
 	}
 }
 
-func AdminAuth(t db.TokenStore) mux.MiddlewareFunc {
+func AdminAuth(t db.TokenStore, u db.UserStore) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			Auth(t)
+			session, err := r.Cookie("session")
+			if err != nil {
+				log.Error("there are no cookies of type session")
+				http.Redirect(w, r, "/login", http.StatusFound)
+				return
+			}
+
+			isValid, err := t.Valid(session.Value)
+			if !isValid {
+				log.Error("Tokenerror: ", err)
+				http.Redirect(w, r, "/login", http.StatusFound)
+				return
+			}
+			user, err := u.GetUserByID(uuid.MustParse(session.Value))
+			if err != nil {
+				log.Error("User Error: ", err)
+				return
+			}
+			if !user.IsAdmin {
+				log.Error("User Error: User is not a registered admin!")
+				http.Redirect(w, r, "/", http.StatusFound)
+				return
+			}
+			cookie, err := t.Refresh(session.Value)
+			if err != nil {
+				log.Error("Error Refreshing: ", err)
+				http.Redirect(w, r, "/", http.StatusFound)
+				return
+			}
+
+			http.SetCookie(w, cookie)
 			log.Info("Admin checked")
 			next.ServeHTTP(w, r)
 		})

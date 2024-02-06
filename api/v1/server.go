@@ -57,7 +57,9 @@ func (s *Server) ServeHTTP() {
 	router := mux.NewRouter()
 
 	authMiddleware := mux.NewRouter().PathPrefix("/user").Subrouter()
+	adminMiddleware := mux.NewRouter().PathPrefix("/admin").Subrouter()
 	authMiddleware.Use(middleware.Auth(s.tokenstore))
+	adminMiddleware.Use(middleware.AdminAuth(s.tokenstore, s.userstore))
 	router.Use(middleware.Logger())
 	router.PathPrefix("/user").Handler(authMiddleware)
 	// routing
@@ -75,6 +77,8 @@ func (s *Server) ServeHTTP() {
 	authMiddleware.HandleFunc("/create", s.createHandler).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/search", s.searchHandler).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/create", s.createEntry()).Methods(http.MethodPost)
+	// routing through admincheck via /admin
+	adminMiddleware.HandleFunc("/admin", s.adminHandler).Methods(http.MethodGet)
 	// log.Info("listening to: ")
 
 	srv := &http.Server{
@@ -185,6 +189,12 @@ func (s *Server) verifyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.log.Info(mux.Vars(r))
+}
+
+func (s *Server) adminHandler(w http.ResponseWriter, r *http.Request) {
+    return func(w http.ResponseWriter, r *http.Request){
+    err := s.templates.
+  }
 }
 
 func (s *Server) createEntry() http.HandlerFunc {
