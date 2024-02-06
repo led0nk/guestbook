@@ -4,7 +4,6 @@ import (
 	"errors"
 	"html"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -69,8 +68,8 @@ func (s *Server) ServeHTTP() {
 	router.HandleFunc("/logout", s.logout()).Methods(http.MethodGet)
 	router.HandleFunc("/signup", s.signupHandler).Methods(http.MethodGet)
 	router.HandleFunc("/signup", s.signupAuth()).Methods(http.MethodPost)
-	router.HandleFunc("/verify/{ID}", s.verifyHandler).Methods(http.MethodGet)
-	router.HandleFunc("/verify/{ID}", s.verifyAuth()).Methods(http.MethodPost)
+	router.HandleFunc("/verify", s.verifyHandler).Methods(http.MethodGet)
+	router.HandleFunc("/verify", s.verifyAuth()).Methods(http.MethodPost)
 	// routing through authentication via /user
 	authMiddleware.HandleFunc("/dashboard", s.dashboardHandler()).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/create", s.createHandler).Methods(http.MethodGet)
@@ -211,23 +210,14 @@ func (s *Server) loginAuth() http.HandlerFunc {
 		email := r.FormValue("email")
 		user, error := s.userstore.GetUserByEmail(email)
 		if error != nil {
-			s.log.Error("cannot access right hashpassword", error)
+			s.log.Error("User Error: ", error)
+			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword(user.Password, []byte(r.FormValue("password"))); err != nil {
-			s.log.Error("error while comparing password", err)
+			s.log.Error("Hashing Error: ", err)
 			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		if !user.IsVerified {
-			err := s.templates.TmplLogin.Execute(w, &user)
-			if err != nil {
-				s.log.Error("Template Error: ", err)
-				return
-			}
-			s.log.Error("Login error: User is not verified")
 			return
 		}
 
@@ -238,7 +228,7 @@ func (s *Server) loginAuth() http.HandlerFunc {
 		}
 
 		http.SetCookie(w, cookie)
-		http.Redirect(w, r, "/user/dashboard", http.StatusFound)
+		http.Redirect(w, r, "/verify", http.StatusFound)
 	}
 }
 
@@ -307,20 +297,20 @@ func (s *Server) signupAuth() http.HandlerFunc {
 			return
 		}
 		http.SetCookie(w, cookie)
-		joinedPath, _ := url.JoinPath("/verify", userID.String())
-		http.Redirect(w, r, joinedPath, http.StatusFound)
+		//joinedPath, _ := url.JoinPath("/verify", userID.String())
+		http.Redirect(w, r, "/login", http.StatusFound)
 	}
 }
 
 func (s *Server) verifyAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-		varstring := mux.Vars(r)
-		s.log.Info(mux.Vars(r))
-		userID, _ := uuid.Parse(varstring["ID"])
+		s.log.Info("test")
+		session, _ := r.Cookie("session")
+		userID, _ := s.tokenstore.GetTokenValue(session)
 		ok, err := s.userstore.CodeValidation(userID, r.FormValue("code"))
 		if !ok {
-			http.Redirect(w, r, r.URL.RawPath, http.StatusFound)
+			http.Redirect(w, r, "/verify", http.StatusFound)
 			s.log.Info("User: Validation Code not correct")
 			return
 		}
@@ -328,6 +318,6 @@ func (s *Server) verifyAuth() http.HandlerFunc {
 			s.log.Error("User Error:", err)
 			return
 		}
-		http.Redirect(w, r, "/login", http.StatusFound)
+		http.Redirect(w, r, "/user/dashboard", http.StatusFound)
 	}
 }

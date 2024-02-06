@@ -3,36 +3,19 @@
 <div class="flex justify-center items-center bg-slate-300 flex-1">
   <div class="bg-white rounded-lg h-full w-1/2 p-6">
     <h1 class="text-3xl block text-center font-semibold">Create your entry:</h1>
-    <form
-      hx-post="/user/create"
-      hx-target="#result"
-      class="flex flex-col w-full gap-y-1"
-    >
+    <form action="/user/create" method="post" class="flex flex-col w-full gap-y-1">
       <label for="name" class="">Name:</label><br />
       <div class="relative">
-        <input
-          type="text"
-          id="name"
-          placeholder="{{ .user.Name }}"
-          name="name"
+        <input type="text" id="name" placeholder="{{ .user.Name }}" name="name"
           class="placeholder:italic placeholder placeholder:text-gray-400 block w-full rounded-lg px-3 md:px-4 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 focus:ring-inset focus:outline-none hover:ring-3 hover:ring-inset hover:ring-indigo-600 hover:shadow-sm sm:text-sm sm:leading-6 shadow-sm"
-          disabled
-        />
+          disabled />
       </div>
       <label for="message">Message:</label><br />
-      <textarea
-        id="message"
-        name="message"
-        rows="8"
-        placeholder="Leave your message here.."
-        class="placeholder:italic placeholder placeholder:text-gray-400 resize block rounded-lg border-0 px-3 md:px-4 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 focus:outline-none sm:text-sm sm:leading-6 hover:ring-3 hover:ring-inset hover:ring-indigo-600 hover:shadow-sm"
-      >
+      <textarea id="message" name="message" rows="8" placeholder="Leave your message here.."
+        class="placeholder:italic placeholder placeholder:text-gray-400 resize block rounded-lg border-0 px-3 md:px-4 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 focus:outline-none sm:text-sm sm:leading-6 hover:ring-3 hover:ring-inset hover:ring-indigo-600 hover:shadow-sm">
       </textarea>
-      <button
-        type="submit"
-        value="Submit"
-        class="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm border-2 border-indigo-600 hover:text-indigo-600 hover:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-      >
+      <button type="submit" value="Submit"
+        class="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm border-2 border-indigo-600 hover:text-indigo-600 hover:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
         Submit
       </button>
     </form>

@@ -3,6 +3,7 @@ package jsondb
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/mail"
 	"net/url"
 	"os"
@@ -162,7 +163,6 @@ func (u *UserStorage) GetUserByToken(token string) (*model.User, error) {
 func (u *UserStorage) CodeValidation(ID uuid.UUID, code string) (bool, error) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-
 	user, err := u.GetUserByID(ID)
 	if err != nil {
 		return false, err
@@ -175,7 +175,9 @@ func (u *UserStorage) CodeValidation(ID uuid.UUID, code string) (bool, error) {
 		return false, errors.New("Wrong Verification Code")
 	}
 	user.IsVerified = true
+	fmt.Println("test2")
 	u.UpdateUser(user)
+	fmt.Println("test2")
 	return true, nil
 }
 
