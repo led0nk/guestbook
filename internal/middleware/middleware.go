@@ -87,23 +87,29 @@ func AdminAuth(t db.TokenStore, u db.UserStore) mux.MiddlewareFunc {
 
 			isValid, err := t.Valid(session.Value)
 			if !isValid {
-				log.Error("Tokenerror: ", err)
+				log.Warn("Token Error: ", err)
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
-			user, err := u.GetUserByID(uuid.MustParse(session.Value))
+			log.Debug(session.Value)
+			userID, err := uuid.Parse(session.Value)
 			if err != nil {
-				log.Error("User Error: ", err)
+				log.Warn("UUID Error: ", err)
+				return
+			}
+			user, err := u.GetUserByID(userID)
+			if err != nil {
+				log.Warn("User Error: ", err)
 				return
 			}
 			if !user.IsAdmin {
-				log.Error("User Error: User is not a registered admin!")
+				log.Warn("User Error: User is not a registered admin!")
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}
 			cookie, err := t.Refresh(session.Value)
 			if err != nil {
-				log.Error("Error Refreshing: ", err)
+				log.Warn("Error Refreshing: ", err)
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}

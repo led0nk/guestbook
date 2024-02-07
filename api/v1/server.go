@@ -62,6 +62,7 @@ func (s *Server) ServeHTTP() {
 	adminMiddleware.Use(middleware.AdminAuth(s.tokenstore, s.userstore))
 	router.Use(middleware.Logger())
 	router.PathPrefix("/user").Handler(authMiddleware)
+	router.PathPrefix("/admin").Handler(adminMiddleware)
 	// routing
 	router.HandleFunc("/", s.handlePage()).Methods(http.MethodGet)
 	router.HandleFunc("/", s.delete()).Methods(http.MethodPost)
@@ -195,6 +196,7 @@ func (s *Server) adminHandler(w http.ResponseWriter, r *http.Request) {
 	err := s.templates.TmplAdmin.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
+		s.log.Warn("Template Error: ", err)
 		return
 	}
 }
@@ -240,6 +242,9 @@ func (s *Server) loginAuth() http.HandlerFunc {
 		}
 
 		http.SetCookie(w, cookie)
+		if user.IsAdmin {
+			http.Redirect(w, r, "/admin/dashboard", http.StatusFound)
+		}
 		http.Redirect(w, r, "/verify", http.StatusFound)
 	}
 }

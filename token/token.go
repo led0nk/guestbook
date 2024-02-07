@@ -17,12 +17,14 @@ type Token struct {
 
 type TokenStorage struct {
 	Tokens map[uuid.UUID]*Token
+	Secret string
 	mu     sync.Mutex
 }
 
-func CreateTokenService() (*TokenStorage, error) {
+func CreateTokenService(secret string) (*TokenStorage, error) {
 	tokenService := &TokenStorage{
 		Tokens: make(map[uuid.UUID]*Token),
+		Secret: secret,
 	}
 	return tokenService, nil
 }
@@ -37,7 +39,7 @@ func (t *TokenStorage) CreateToken(session string, ID uuid.UUID) (*http.Cookie, 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id": ID.String(),
 	})
-	tokenString, _ := token.SignedString([]byte("secret")) //exchange to osenv later
+	tokenString, _ := token.SignedString([]byte(t.Secret)) //exchange to osenv later
 	expiration := time.Now().Add(15 * time.Minute)
 	tokenStruct := &Token{
 		Token:      tokenString,

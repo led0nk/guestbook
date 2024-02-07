@@ -52,7 +52,7 @@ func main() {
 		panic("bad storage")
 	}
 	//in memory
-	tokenStorage, _ := token.CreateTokenService()
+	tokenStorage, _ := token.CreateTokenService(os.Getenv("TOKENSECRET"))
 
 	tStore = tokenStorage
 
