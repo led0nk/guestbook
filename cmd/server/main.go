@@ -66,7 +66,7 @@ func main() {
 	//create templatehandler
 	templates := templates.NewTemplateHandler()
 	//create mailerservice
-	mailer := mailer.NewMailer(os.Getenv("MAIL"), os.Getenv("SMTPPW"), os.Getenv("HOST"), os.Getenv("PORT"))
+	mailer := mailer.NewMailer(os.Getenv("EMAIL"), os.Getenv("SMTPPW"), os.Getenv("HOST"), os.Getenv("PORT"))
 	//create Server
 	server := v1.NewServer(address, mailer, templates, logger, bStore, uStore, tStore, middleware.Logger(), middleware.Auth(tStore))
 	server.ServeHTTP()

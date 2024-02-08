@@ -2,6 +2,8 @@ package mailer
 
 import (
 	"bytes"
+	"fmt"
+	"net/smtp"
 
 	templates "github.com/led0nk/guestbook/internal"
 	"github.com/led0nk/guestbook/internal/model"
@@ -34,20 +36,21 @@ func (m *Mailer) SendVerMail(user *model.User, tmpl *templates.TemplateHandler) 
 	if err != nil {
 		return err
 	}
-	//headers := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";"
-	//msg := "Subject: Email Validation" + "\n" + headers + "\n\n" + body.String()
-	//	err = smtp.SendMail(
-	//		m.Host+":"+m.Port,
-	//	smtp.PlainAuth(
-	//	"",
-	//		m.Email,
-	//	m.Password,
-	//	m.Host,
-	//),
-	//m.Email,
-	//[]string{user.Email},
-	//[]byte(msg),
-	//)
+	fmt.Println(m)
+	headers := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";"
+	msg := "Subject: Email Validation" + "\n" + headers + "\n\n" + body.String()
+	err = smtp.SendMail(
+		m.Host+":"+m.Port,
+		smtp.PlainAuth(
+			"",
+			m.Email,
+			m.Password,
+			m.Host,
+		),
+		m.Email,
+		[]string{user.Email},
+		[]byte(msg),
+	)
 	if err != nil {
 		return err
 	}

@@ -71,8 +71,8 @@ func (s *Server) ServeHTTP() {
 	router.HandleFunc("/logout", s.logoutAuth()).Methods(http.MethodGet)
 	router.HandleFunc("/signup", s.signupHandler).Methods(http.MethodGet)
 	router.HandleFunc("/signup", s.signupAuth()).Methods(http.MethodPost)
-	router.HandleFunc("/verify", s.verifyHandler).Methods(http.MethodGet)
-	router.HandleFunc("/verify", s.verifyAuth()).Methods(http.MethodPost)
+	authMiddleware.HandleFunc("/verify", s.verifyHandler).Methods(http.MethodGet)
+	authMiddleware.HandleFunc("/verify", s.verifyAuth()).Methods(http.MethodPost)
 	// routing through authentication via /user
 	authMiddleware.HandleFunc("/dashboard", s.dashboardHandler()).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/create", s.createHandler).Methods(http.MethodGet)
@@ -245,7 +245,7 @@ func (s *Server) loginAuth() http.HandlerFunc {
 		if user.IsAdmin {
 			http.Redirect(w, r, "/admin/dashboard", http.StatusFound)
 		}
-		http.Redirect(w, r, "/verify", http.StatusFound)
+		http.Redirect(w, r, "/user/verify", http.StatusFound)
 	}
 }
 
@@ -322,7 +322,6 @@ func (s *Server) signupAuth() http.HandlerFunc {
 func (s *Server) verifyAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-		s.log.Info("test")
 		session, _ := r.Cookie("session")
 		s.log.Debug(session)
 		s.log.Debug(session.Value)
@@ -333,8 +332,8 @@ func (s *Server) verifyAuth() http.HandlerFunc {
 		}
 		ok, err := s.userstore.CodeValidation(userID, r.FormValue("code"))
 		if !ok {
-			http.Redirect(w, r, "/verify", http.StatusFound)
-			s.log.Info("User: Validation Code not correct")
+			http.Redirect(w, r, "/user/verify", http.StatusFound)
+			s.log.Info("User Error: ", err)
 			return
 		}
 		if err != nil {
