@@ -324,7 +324,13 @@ func (s *Server) verifyAuth() http.HandlerFunc {
 		r.ParseForm()
 		s.log.Info("test")
 		session, _ := r.Cookie("session")
-		userID, _ := s.tokenstore.GetTokenValue(session)
+		s.log.Debug(session)
+		s.log.Debug(session.Value)
+		userID, err := s.tokenstore.GetTokenValue(session)
+		if err != nil {
+			s.log.Warn("Token Error: ", err)
+			return
+		}
 		ok, err := s.userstore.CodeValidation(userID, r.FormValue("code"))
 		if !ok {
 			http.Redirect(w, r, "/verify", http.StatusFound)

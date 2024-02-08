@@ -80,7 +80,7 @@ func (t *TokenStorage) GetTokenValue(c *http.Cookie) (uuid.UUID, error) {
 	tokenString := c.Value
 	claims := jwt.MapClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte("secret"), nil
+		return []byte(t.Secret), nil
 	})
 	if err != nil {
 		return uuid.Nil, err

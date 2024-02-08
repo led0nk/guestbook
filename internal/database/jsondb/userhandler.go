@@ -115,14 +115,9 @@ func (u *UserStorage) GetUserByEmail(email string) (*model.User, error) {
 }
 
 func (u *UserStorage) GetUserByID(ID uuid.UUID) (*model.User, error) {
-	//TODO in DEBUGGING state, seems to loop
-	fmt.Println("Beginning of GetUserByID")
 	u.mu.Lock()
-	fmt.Println("after mutex Lock")
 	defer u.mu.Unlock()
-	fmt.Println("before uuid == nil")
 	if ID == uuid.Nil {
-		fmt.Println("in uuid == nil")
 		return nil, errors.New("UUID empty")
 	}
 	users := &model.User{}
@@ -157,23 +152,11 @@ func ValidateUserInput(v url.Values) error {
 	return nil
 }
 
-func (u *UserStorage) GetUserByToken(token string) (*model.User, error) {
-	u.mu.Lock()
-	defer u.mu.Unlock()
-	returnvalue := &model.User{}
-
-	return returnvalue, nil
-}
-
 func (u *UserStorage) CodeValidation(ID uuid.UUID, code string) (bool, error) {
-	u.mu.Lock()
-	defer u.mu.Unlock()
-	fmt.Println("before get user by id")
 	user, err := u.GetUserByID(ID)
 	if err != nil {
 		return false, err
 	}
-	fmt.Println("after get user by id")
 	if !time.Now().Before(user.ExpirationTime) {
 		u.DeleteUser(ID)
 		return false, errors.New("Verification Code expired")
@@ -182,9 +165,7 @@ func (u *UserStorage) CodeValidation(ID uuid.UUID, code string) (bool, error) {
 		return false, errors.New("Wrong Verification Code")
 	}
 	user.IsVerified = true
-	fmt.Println("test2")
 	u.UpdateUser(user)
-	fmt.Println("test2")
 	return true, nil
 }
 

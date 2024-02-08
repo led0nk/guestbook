@@ -3,7 +3,6 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	db "github.com/led0nk/guestbook/internal/database"
 	log "github.com/sirupsen/logrus"
@@ -92,11 +91,13 @@ func AdminAuth(t db.TokenStore, u db.UserStore) mux.MiddlewareFunc {
 				return
 			}
 			log.Debug(session.Value)
-			userID, err := uuid.Parse(session.Value)
+
+			userID, err := t.GetTokenValue(session)
 			if err != nil {
-				log.Warn("UUID Error: ", err)
+				log.Warn("Token Error: ", err)
 				return
 			}
+			log.Debug(userID)
 			user, err := u.GetUserByID(userID)
 			if err != nil {
 				log.Warn("User Error: ", err)
