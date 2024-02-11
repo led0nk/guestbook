@@ -80,7 +80,7 @@ func (s *Server) ServeHTTP() {
 	authMiddleware.HandleFunc("/create", s.createEntry()).Methods(http.MethodPost)
 	// routing through admincheck via /admin
 	adminMiddleware.HandleFunc("/dashboard", s.adminHandler).Methods(http.MethodGet)
-	adminMiddleware.HandleFunc("dashboard", s.deleteUser()).Methods(http.MethodDelete)
+	adminMiddleware.HandleFunc("/dashboard/{ID}", s.deleteUser()).Methods(http.MethodDelete)
 	// log.Info("listening to: ")
 
 	srv := &http.Server{
@@ -118,12 +118,14 @@ func (s *Server) deleteUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		r.ParseForm()
-		strUuid := r.Form.Get("Delete")
-		uuidStr, _ := uuid.Parse(strUuid)
-
-		err := s.userstore.DeleteUser(uuidStr)
+		ID, err := uuid.Parse(mux.Vars(r)["ID"])
 		if err != nil {
-			s.log.Warn("Entry Error: ", err)
+			s.log.Warn("UUID Error: ", err)
+			return
+		}
+		err = s.userstore.DeleteUser(ID)
+		if err != nil {
+			s.log.Warn("User Error: ", err)
 			return
 		}
 		http.Redirect(w, r, "/admin/dashboard", http.StatusFound)

@@ -184,10 +184,10 @@ func (u *UserStorage) DeleteUser(ID uuid.UUID) error {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	if ID == uuid.Nil {
-		return errors.New("requires an entryID")
+		return errors.New("requires an userID")
 	}
 	if _, exists := u.user[ID]; !exists {
-		err := errors.New("entry doesn't exist")
+		err := errors.New("user doesn't exist")
 		return err
 	}
 
