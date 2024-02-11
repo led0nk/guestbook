@@ -3,10 +3,10 @@ package jsondb
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/mail"
 	"net/url"
 	"os"
+	"sort"
 	"sync"
 	"time"
 
@@ -74,6 +74,17 @@ func (u *UserStorage) CreateUser(user *model.User) (uuid.UUID, error) {
 	return user.ID, nil
 }
 
+func (u *UserStorage) ListUser() ([]*model.User, error) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	userlist := make([]*model.User, 0, len(u.user))
+	for _, user := range u.user {
+		userlist = append(userlist, user)
+	}
+	sort.Slice(userlist, func(i, j int) bool { return userlist[i].Name > userlist[j].Name })
+	return userlist, nil
+}
+
 // maybe only for expired ExpTime and Reverification
 func (u *UserStorage) CreateVerificationCode(userID uuid.UUID) error {
 	u.mu.Lock()
@@ -124,7 +135,6 @@ func (u *UserStorage) GetUserByID(ID uuid.UUID) (*model.User, error) {
 	for _, user := range u.user {
 		if user.ID == ID {
 			users = user
-			fmt.Println(user)
 		}
 	}
 	return users, nil

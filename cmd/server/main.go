@@ -25,7 +25,11 @@ func main() {
 		TimestampFormat: "2006/01/02 15:04:05",
 	})
 	log.SetLevel(log.DebugLevel)
-
+	logger.SetFormatter(&log.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: "2006/01/02 15:04:05",
+	})
+	logger.SetLevel(log.DebugLevel)
 	var (
 		addr     = flag.String("addr", "localhost:8080", "server port")
 		entryStr = flag.String("entrydata", "file://../../testdata/entries.json", "link to entry-database")
@@ -68,6 +72,7 @@ func main() {
 	//create mailerservice
 	mailer := mailer.NewMailer(os.Getenv("EMAIL"), os.Getenv("SMTPPW"), os.Getenv("HOST"), os.Getenv("PORT"))
 	//create Server
-	server := v1.NewServer(address, mailer, templates, logger, bStore, uStore, tStore, middleware.Logger(), middleware.Auth(tStore))
+	//TODO: not optimized -> just want to put input var's of middleware and give them logger and storage inside server
+	server := v1.NewServer(address, mailer, templates, logger, bStore, uStore, tStore, middleware.Logger(logger), middleware.Auth(tStore, logger), middleware.AdminAuth(tStore, uStore, logger))
 	server.ServeHTTP()
 }

@@ -5,7 +5,7 @@ import (
 
 	"github.com/gorilla/mux"
 	db "github.com/led0nk/guestbook/internal/database"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 type ResponseRecorder struct {
@@ -19,7 +19,7 @@ func (rec *ResponseRecorder) WriteHeader(statusCode int) {
 }
 
 // logging middleware
-func Logger() mux.MiddlewareFunc {
+func Logger(log logrus.FieldLogger) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var arrow string
@@ -43,7 +43,7 @@ func Logger() mux.MiddlewareFunc {
 }
 
 // authentication middleware, check for session values -> redirect
-func Auth(t db.TokenStore) mux.MiddlewareFunc {
+func Auth(t db.TokenStore, log logrus.FieldLogger) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			session, err := r.Cookie("session")
@@ -68,13 +68,13 @@ func Auth(t db.TokenStore) mux.MiddlewareFunc {
 			}
 
 			http.SetCookie(w, cookie)
-			log.Info("authMiddleware done")
+			log.Info("Middleware: Authentication checked")
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-func AdminAuth(t db.TokenStore, u db.UserStore) mux.MiddlewareFunc {
+func AdminAuth(t db.TokenStore, u db.UserStore, log logrus.FieldLogger) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			session, err := r.Cookie("session")
@@ -90,14 +90,12 @@ func AdminAuth(t db.TokenStore, u db.UserStore) mux.MiddlewareFunc {
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
-			log.Debug(session.Value)
 
 			userID, err := t.GetTokenValue(session)
 			if err != nil {
 				log.Warn("Token Error: ", err)
 				return
 			}
-			log.Debug(userID)
 			user, err := u.GetUserByID(userID)
 			if err != nil {
 				log.Warn("User Error: ", err)
@@ -116,7 +114,7 @@ func AdminAuth(t db.TokenStore, u db.UserStore) mux.MiddlewareFunc {
 			}
 
 			http.SetCookie(w, cookie)
-			log.Info("Admin checked")
+			log.Info("Middleware: Admin checked")
 			next.ServeHTTP(w, r)
 		})
 	}

@@ -2,7 +2,6 @@ package mailer
 
 import (
 	"bytes"
-	"fmt"
 	"net/smtp"
 
 	templates "github.com/led0nk/guestbook/internal"
@@ -36,7 +35,6 @@ func (m *Mailer) SendVerMail(user *model.User, tmpl *templates.TemplateHandler) 
 	if err != nil {
 		return err
 	}
-	fmt.Println(m)
 	headers := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";"
 	msg := "Subject: Email Validation" + "\n" + headers + "\n\n" + body.String()
 	err = smtp.SendMail(

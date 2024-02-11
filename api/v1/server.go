@@ -58,14 +58,14 @@ func (s *Server) ServeHTTP() {
 
 	authMiddleware := mux.NewRouter().PathPrefix("/user").Subrouter()
 	adminMiddleware := mux.NewRouter().PathPrefix("/admin").Subrouter()
-	authMiddleware.Use(middleware.Auth(s.tokenstore))
-	adminMiddleware.Use(middleware.AdminAuth(s.tokenstore, s.userstore))
-	router.Use(middleware.Logger())
+	authMiddleware.Use(middleware.Auth(s.tokenstore, s.log))
+	adminMiddleware.Use(middleware.AdminAuth(s.tokenstore, s.userstore, s.log))
+	router.Use(s.mw[0])
 	router.PathPrefix("/user").Handler(authMiddleware)
 	router.PathPrefix("/admin").Handler(adminMiddleware)
 	// routing
 	router.HandleFunc("/", s.handlePage()).Methods(http.MethodGet)
-	router.HandleFunc("/", s.delete()).Methods(http.MethodPost)
+	// router.HandleFunc("/", s.delete()).Methods(http.MethodPost)
 	router.HandleFunc("/login", s.loginHandler).Methods(http.MethodGet)
 	router.HandleFunc("/login", s.loginAuth()).Methods(http.MethodPost)
 	router.HandleFunc("/logout", s.logoutAuth()).Methods(http.MethodGet)
@@ -80,6 +80,7 @@ func (s *Server) ServeHTTP() {
 	authMiddleware.HandleFunc("/create", s.createEntry()).Methods(http.MethodPost)
 	// routing through admincheck via /admin
 	adminMiddleware.HandleFunc("/dashboard", s.adminHandler).Methods(http.MethodGet)
+	adminMiddleware.HandleFunc("dashboard", s.deleteUser()).Methods(http.MethodDelete)
 	// log.Info("listening to: ")
 
 	srv := &http.Server{
@@ -113,20 +114,19 @@ func (s *Server) handlePage() http.HandlerFunc {
 	}
 }
 
-func (s *Server) delete() http.HandlerFunc {
+func (s *Server) deleteUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		r.ParseForm()
 		strUuid := r.Form.Get("Delete")
 		uuidStr, _ := uuid.Parse(strUuid)
 
-		deleteEntry := model.GuestbookEntry{ID: uuidStr}
-		err := s.bookstore.DeleteEntry(deleteEntry.ID)
+		err := s.userstore.DeleteUser(uuidStr)
 		if err != nil {
 			s.log.Warn("Entry Error: ", err)
 			return
 		}
-		http.Redirect(w, r, "/", http.StatusFound)
+		http.Redirect(w, r, "/admin/dashboard", http.StatusFound)
 
 	}
 }
@@ -137,15 +137,18 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
+		s.log.Warn("Template Error: ", err)
 		return
 	}
 }
 
 // show login Form
 func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
+	s.log.Debug("test")
 	err := s.templates.TmplLogin.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
+		s.log.Warn("Template Error: ", err)
 		return
 	}
 }
@@ -155,6 +158,7 @@ func (s *Server) signupHandler(w http.ResponseWriter, r *http.Request) {
 	err := s.templates.TmplSignUp.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
+		s.log.Warn("Template Error: ", err)
 		return
 	}
 }
@@ -169,6 +173,7 @@ func (s *Server) dashboardHandler() http.HandlerFunc {
 		err := s.templates.TmplDashboard.Execute(w, user)
 		if err != nil {
 			w.WriteHeader(http.StatusBadGateway)
+			s.log.Warn("Template Error: ", err)
 			return
 		}
 
@@ -179,6 +184,7 @@ func (s *Server) createHandler(w http.ResponseWriter, r *http.Request) {
 	err := s.templates.TmplCreate.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
+		s.log.Warn("Template Error: ", err)
 		return
 	}
 }
@@ -187,13 +193,14 @@ func (s *Server) verifyHandler(w http.ResponseWriter, r *http.Request) {
 	err := s.templates.TmplVerification.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
+		s.log.Warn("Template Error: ", err)
 		return
 	}
-	s.log.Info(mux.Vars(r))
 }
 
 func (s *Server) adminHandler(w http.ResponseWriter, r *http.Request) {
-	err := s.templates.TmplAdmin.Execute(w, nil)
+	users, _ := s.userstore.ListUser()
+	err := s.templates.TmplAdmin.Execute(w, &users)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
 		s.log.Warn("Template Error: ", err)

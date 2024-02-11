@@ -23,6 +23,8 @@ type UserStore interface {
 	UpdateUser(*model.User) error
 	CreateVerificationCode(uuid.UUID) error
 	CodeValidation(uuid.UUID, string) (bool, error)
+	ListUser() ([]*model.User, error)
+	DeleteUser(uuid.UUID) error
 }
 
 type TokenStore interface {
