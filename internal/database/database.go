@@ -28,7 +28,7 @@ type UserStore interface {
 }
 
 type TokenStore interface {
-	CreateToken(string, uuid.UUID) (*http.Cookie, error)
+	CreateToken(string, uuid.UUID, bool) (*http.Cookie, error)
 	DeleteToken(uuid.UUID) error
 	GetTokenValue(*http.Cookie) (uuid.UUID, error)
 	Valid(string) (bool, error)

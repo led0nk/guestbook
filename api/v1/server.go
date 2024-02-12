@@ -2,11 +2,9 @@ package v1
 
 import (
 	"errors"
-	"fmt"
 	"html"
 	"net/http"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/google/uuid"
@@ -83,7 +81,9 @@ func (s *Server) ServeHTTP() {
 	// routing through admincheck via /admin
 	adminMiddleware.HandleFunc("/dashboard", s.adminHandler).Methods(http.MethodGet)
 	adminMiddleware.HandleFunc("/dashboard/{ID}", s.deleteUser()).Methods(http.MethodDelete)
-	adminMiddleware.HandleFunc("/dashboard/{ID}", s.updateUser()).Methods(http.MethodPut)
+	adminMiddleware.HandleFunc("/dashboard/{ID}", s.updateUser()).Methods(http.MethodPost)
+	adminMiddleware.HandleFunc("/dashboard/{ID}", s.saveUser()).Methods(http.MethodPut)
+	adminMiddleware.HandleFunc("/dashboard/{ID}/verify", s.resendVer()).Methods(http.MethodPut)
 	// log.Info("listening to: ")
 
 	srv := &http.Server{
@@ -130,7 +130,6 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 
 // show login Form
 func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
-	s.log.Debug("test")
 	err := s.templates.TmplLogin.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
@@ -227,8 +226,7 @@ func (s *Server) loginAuth() http.HandlerFunc {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-
-		cookie, err := s.tokenstore.CreateToken("session", user.ID)
+		cookie, err := s.tokenstore.CreateToken("session", user.ID, utils.FormValueBool(r.FormValue("Rememberme")))
 		if err != nil {
 			s.log.Warn("Token Error: ", err)
 			return
@@ -277,7 +275,7 @@ func (s *Server) signupAuth() http.HandlerFunc {
 			http.Redirect(w, r, "/signup", http.StatusFound)
 			return
 		}
-		joinedName := strings.Join([]string{r.FormValue("firstname"), r.FormValue("lastname")}, " ")
+		joinedName := strings.Join([]string{utils.Capitalize(r.FormValue("firstname")), utils.Capitalize(r.FormValue("lastname"))}, " ")
 		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(r.Form.Get("password")), 14)
 		newUser := model.User{
 			Email:            html.EscapeString(r.FormValue("email")),
@@ -288,26 +286,18 @@ func (s *Server) signupAuth() http.HandlerFunc {
 			VerificationCode: utils.RandomString(6),
 			ExpirationTime:   time.Now().Add(time.Minute * 5),
 		}
-		userID, usererr := s.userstore.CreateUser(&newUser)
+		_, usererr := s.userstore.CreateUser(&newUser)
 		if usererr != nil {
 			s.log.Warn("User error: ", err)
 			http.Redirect(w, r, "/signup", http.StatusFound)
 			w.WriteHeader(http.StatusUnauthorized)
 		}
 
-		var cookie *http.Cookie
-		cookie, err = s.tokenstore.CreateToken("verification", userID)
-		if err != nil {
-			s.log.Warn("Token Error: ", err)
-			return
-		}
 		err = s.mailer.SendVerMail(&newUser, s.templates)
 		if err != nil {
 			s.log.Warn("Mailer Error: ", err)
 			return
 		}
-		http.SetCookie(w, cookie)
-		//joinedPath, _ := url.JoinPath("/verify", userID.String())
 		http.Redirect(w, r, "/login", http.StatusFound)
 	}
 }
@@ -367,8 +357,75 @@ func (s *Server) updateUser() http.HandlerFunc {
 			s.log.Warn("User Error", err)
 			return
 		}
-		htmlStr := fmt.Sprintf("<div>{{ .Name }}</div>")
-		tmpl, _ := template.New("t").Parse(htmlStr)
-		tmpl.Execute(w, &user)
+		err = s.templates.TmplAdminInput.Execute(w, &user)
+		if err != nil {
+			s.log.Warn("Template Error: ", err)
+			return
+		}
+	}
+}
+
+// save updated User data
+func (s *Server) saveUser() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		userID, err := uuid.Parse(mux.Vars(r)["ID"])
+		if err != nil {
+			s.log.Warn("UUID Error: ", err)
+			return
+		}
+		user, err := s.userstore.GetUserByID(userID)
+		if err != nil {
+			s.log.Warn("User Error: ", err)
+			return
+		}
+
+		updatedUser := model.User{
+			ID:               user.ID,
+			Email:            r.FormValue("Email"),
+			Name:             user.Name,
+			Password:         user.Password,
+			IsAdmin:          utils.FormValueBool(r.FormValue("Admin")),
+			IsVerified:       utils.FormValueBool(r.FormValue("Verified")),
+			VerificationCode: user.VerificationCode,
+			ExpirationTime:   user.ExpirationTime,
+		}
+		err = s.userstore.UpdateUser(&updatedUser)
+		if err != nil {
+			s.log.Warn("User Error: ", err)
+			return
+		}
+		err = s.templates.TmplAdminUser.Execute(w, &updatedUser)
+		if err != nil {
+			s.log.Warn("Template Error: ", err)
+			return
+		}
+	}
+}
+
+func (s *Server) resendVer() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := uuid.Parse(mux.Vars(r)["ID"])
+		if err != nil {
+			s.log.Warn("UUID Error: ", err)
+			return
+		}
+		user, err := s.userstore.GetUserByID(userID)
+		if err != nil {
+			s.log.Warn("User Error: ", err)
+			return
+		}
+		user.VerificationCode = utils.RandomString(6)
+		user.ExpirationTime = time.Now().Add(time.Minute * 5)
+		err = s.mailer.SendVerMail(user, s.templates)
+		if err != nil {
+			s.log.Warn("Mailer Error: ", err)
+			return
+		}
+		err = s.userstore.UpdateUser(user)
+		if err != nil {
+			s.log.Warn("User Error: ", err)
+			return
+		}
 	}
 }

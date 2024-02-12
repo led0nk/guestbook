@@ -3,6 +3,7 @@ package utils
 import (
 	"math/rand"
 	"net/url"
+	"unicode"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -16,7 +17,7 @@ func DerefString(s *string) string {
 }
 
 // TODO
-func CheckFlag(flag *string,log *log.Logger, storage any) any {
+func CheckFlag(flag *string, log *log.Logger, storage any) any {
 	path, err := url.Parse(*flag)
 	if err != nil {
 		panic(err)
@@ -33,12 +34,22 @@ func CheckFlag(flag *string,log *log.Logger, storage any) any {
 }
 
 // Create a Random String e.g. for Verification Code
-func RandomString(l int) string{
-  var chars = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+func RandomString(l int) string {
+	var chars = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
-  randomString := make([]rune, l)
-  for i := range randomString {
-    randomString[i] = chars[rand.Intn(len(chars))]
-  }
-  return string(randomString)
+	randomString := make([]rune, l)
+	for i := range randomString {
+		randomString[i] = chars[rand.Intn(len(chars))]
+	}
+	return string(randomString)
+}
+
+func FormValueBool(s string) bool {
+	return s == "true"
+}
+
+func Capitalize(s string) string {
+	runes := []rune(s)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
 }

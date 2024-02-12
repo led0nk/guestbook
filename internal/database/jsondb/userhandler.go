@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -144,6 +145,9 @@ func ValidateUserInput(v url.Values) error {
 
 	if v.Get("firstname") == "" || v.Get("lastname") == "" {
 		return errors.New("fields cannot be empty")
+	}
+	if strings.ContainsAny(v.Get("firstname"), "0123456789") || strings.ContainsAny(v.Get("lastname"), "01234567890") {
+		return errors.New("no numbers allowed")
 	}
 	if v["password"][0] != v["password"][1] {
 		return errors.New("password doesn't match, please try again")

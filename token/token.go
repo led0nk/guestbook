@@ -29,7 +29,7 @@ func CreateTokenService(secret string) (*TokenStorage, error) {
 	return tokenService, nil
 }
 
-func (t *TokenStorage) CreateToken(session string, ID uuid.UUID) (*http.Cookie, error) {
+func (t *TokenStorage) CreateToken(session string, ID uuid.UUID, remember bool) (*http.Cookie, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if ID == uuid.Nil {
@@ -45,15 +45,16 @@ func (t *TokenStorage) CreateToken(session string, ID uuid.UUID) (*http.Cookie, 
 		Token:      tokenString,
 		Expiration: expiration,
 	}
-
+	if remember {
+		tokenStruct.Expiration = time.Now().Add(24 * time.Hour)
+	}
 	t.Tokens[ID] = tokenStruct
 
 	cookie := http.Cookie{
-		Name:    session,
-		Value:   tokenString,
-		Path:    "/",
-		Expires: expiration,
-		//MaxAge:   3600,
+		Name:     session,
+		Value:    tokenString,
+		Path:     "/",
+		Expires:  expiration,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
