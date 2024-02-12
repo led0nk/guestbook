@@ -2,7 +2,7 @@
 <div class="">
   <div class="flex justify-start items-start bg-slate-300 h-screen flex-1">
     {{ range . }}
-    <div class="bg-white rounded-lg w-1/2 p-6 mt-6 ml-6 container" id="user">
+    <div class="bg-white rounded-lg w-1/2 p-6 mt-6 ml-6 container" id="userdisplay">
       <h1 class="text-slate-900 mt-1 text-base font-semibold tracking-tight border-b border-gray-900/10">
         {{ .Name }}:
       </h1>
@@ -46,10 +46,10 @@
       </div>
       {{ end }}
       <div class="flex flex-row gap-x-2">
-        <button hx-put="/admin/dashboard/{{ .ID }}"
+        <button type="button" hx-put="/admin/dashboard/{{ .ID }}" hx-target="#userdisplay" hx-swap="innerHTML"
           class="rounded-lg w-full bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm border-2 border-indigo-600 hover:text-indigo-600 hover:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
           Update</button>
-        <button hx-delete="/admin/dashboard/{{ .ID }}" hx-target="#user" hx-swap="outerHTML"
+        <button type="button" hx-delete="/admin/dashboard/{{ .ID }}" hx-target="#userdisplay" hx-swap="delete"
           class="rounded-lg w-full bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm border-2 border-red-600 hover:text-red-600 hover:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600">
           Delete</button>
       </div>

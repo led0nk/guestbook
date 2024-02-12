@@ -2,9 +2,11 @@ package v1
 
 import (
 	"errors"
+	"fmt"
 	"html"
 	"net/http"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/google/uuid"
@@ -81,6 +83,7 @@ func (s *Server) ServeHTTP() {
 	// routing through admincheck via /admin
 	adminMiddleware.HandleFunc("/dashboard", s.adminHandler).Methods(http.MethodGet)
 	adminMiddleware.HandleFunc("/dashboard/{ID}", s.deleteUser()).Methods(http.MethodDelete)
+	adminMiddleware.HandleFunc("/dashboard/{ID}", s.updateUser()).Methods(http.MethodPut)
 	// log.Info("listening to: ")
 
 	srv := &http.Server{
@@ -110,25 +113,6 @@ func (s *Server) handlePage() http.HandlerFunc {
 			w.WriteHeader(http.StatusBadGateway)
 			return
 		}
-
-	}
-}
-
-func (s *Server) deleteUser() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		r.ParseForm()
-		ID, err := uuid.Parse(mux.Vars(r)["ID"])
-		if err != nil {
-			s.log.Warn("UUID Error: ", err)
-			return
-		}
-		err = s.userstore.DeleteUser(ID)
-		if err != nil {
-			s.log.Warn("User Error: ", err)
-			return
-		}
-		http.Redirect(w, r, "/admin/dashboard", http.StatusFound)
 
 	}
 }
@@ -350,5 +334,41 @@ func (s *Server) verifyAuth() http.HandlerFunc {
 			return
 		}
 		http.Redirect(w, r, "/user/dashboard", http.StatusFound)
+	}
+}
+
+func (s *Server) deleteUser() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		ID, err := uuid.Parse(mux.Vars(r)["ID"])
+		if err != nil {
+			s.log.Warn("UUID Error: ", err)
+			return
+		}
+		err = s.userstore.DeleteUser(ID)
+		if err != nil {
+			s.log.Warn("User Error: ", err)
+			return
+		}
+		// http.Redirect(w, r, "/admin/dashboard", http.StatusFound)
+	}
+}
+
+// TODO: User Template with input Form for editing
+func (s *Server) updateUser() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := uuid.Parse(mux.Vars(r)["ID"])
+		if err != nil {
+			s.log.Warn("UUID Error: ", err)
+			return
+		}
+		user, err := s.userstore.GetUserByID(userID)
+		if err != nil {
+			s.log.Warn("User Error", err)
+			return
+		}
+		htmlStr := fmt.Sprintf("<div>{{ .Name }}</div>")
+		tmpl, _ := template.New("t").Parse(htmlStr)
+		tmpl.Execute(w, &user)
 	}
 }
