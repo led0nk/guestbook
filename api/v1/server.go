@@ -71,6 +71,8 @@ func (s *Server) ServeHTTP() {
 	router.HandleFunc("/logout", s.logoutAuth()).Methods(http.MethodGet)
 	router.HandleFunc("/signup", s.signupHandler).Methods(http.MethodGet)
 	router.HandleFunc("/signup", s.signupAuth()).Methods(http.MethodPost)
+	router.HandleFunc("/forgot-pw", s.forgotHandler).Methods(http.MethodGet)
+	router.HandleFunc("/forgot-pw", s.forgotPW()).Methods(http.MethodPost)
 	authMiddleware.HandleFunc("/verify", s.verifyHandler).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/verify", s.verifyAuth()).Methods(http.MethodPost)
 	// routing through authentication via /user
@@ -193,6 +195,15 @@ func (s *Server) adminHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Server) forgotHandler(w http.ResponseWriter, r *http.Request) {
+	err := s.templates.TmplForgot.Execute(w, nil)
+	if err != nil {
+		w.WriteHeader(http.StatusBadGateway)
+		s.log.Warn("Template Error: ", err)
+		return
+	}
+}
+
 func (s *Server) createEntry() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
@@ -306,8 +317,6 @@ func (s *Server) verifyAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		session, _ := r.Cookie("session")
-		s.log.Debug(session)
-		s.log.Debug(session.Value)
 		userID, err := s.tokenstore.GetTokenValue(session)
 		if err != nil {
 			s.log.Warn("Token Error: ", err)
@@ -427,5 +436,35 @@ func (s *Server) resendVer() http.HandlerFunc {
 			s.log.Warn("User Error: ", err)
 			return
 		}
+		err = s.templates.TmplAdminUser.Execute(w, &user)
+		if err != nil {
+			s.log.Warn("Template Error: ", err)
+			return
+		}
+	}
+}
+
+func (s *Server) forgotPW() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, err := s.userstore.GetUserByEmail(r.FormValue("email"))
+		if err != nil {
+			s.log.Warn("User Error: ", err)
+			return
+		}
+		newPW := utils.RandomString(8)
+		user.Password = []byte(newPW)
+		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(newPW), 14)
+		err = s.mailer.SendPWMail(user, s.templates)
+		if err != nil {
+			s.log.Warn("Mailer Error: ", err)
+			return
+		}
+		user.Password = hashedpassword
+		err = s.userstore.UpdateUser(user)
+		if err != nil {
+			s.log.Warn("User Error: ", err)
+			return
+		}
+		http.Redirect(w, r, "/login", http.StatusFound)
 	}
 }

@@ -7,4 +7,5 @@ import (
 
 type Mailerservice interface {
 	SendVerMail(*model.User, *templates.TemplateHandler) error
+	SendPWMail(*model.User, *templates.TemplateHandler) error
 }

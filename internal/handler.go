@@ -9,6 +9,7 @@ type TemplateHandler struct {
 	TmplHome         *template.Template
 	TmplSearch       *template.Template
 	TmplLogin        *template.Template
+	TmplForgot       *template.Template
 	TmplSignUp       *template.Template
 	TmplDashboard    *template.Template
 	TmplCreate       *template.Template
@@ -28,6 +29,7 @@ func NewTemplateHandler() *TemplateHandler {
 	homeTemplate := "templates/content.html"
 	searchTemplate := "templates/search.html"
 	loginTemplate := "templates/login.html"
+	forgotTemplate := "templates/forgot.html"
 	signupTemplate := "templates/signup.html"
 	dashboardTemplate := "templates/dashboard.html"
 	createTemplate := "templates/create.html"
@@ -41,6 +43,7 @@ func NewTemplateHandler() *TemplateHandler {
 		TmplHome:         template.Must(template.ParseFS(templates, append(loggedoutTemplates, homeTemplate)...)),
 		TmplSearch:       template.Must(template.ParseFS(templates, append(loggedinTemplates, searchTemplate)...)),
 		TmplLogin:        template.Must(template.ParseFS(templates, append(loggedoutTemplates, loginTemplate)...)),
+		TmplForgot:       template.Must(template.ParseFS(templates, append(loggedoutTemplates, forgotTemplate)...)),
 		TmplSignUp:       template.Must(template.ParseFS(templates, append(loggedoutTemplates, signupTemplate)...)),
 		TmplDashboard:    template.Must(template.ParseFS(templates, append(loggedinTemplates, dashboardTemplate)...)),
 		TmplCreate:       template.Must(template.ParseFS(templates, append(loggedinTemplates, createTemplate)...)),
