@@ -1,43 +1,34 @@
 {{ define "content" }}
 <div class="">
-    <div class="flex justify-start items-start bg-slate-300  h-screen  flex-1">
-        <div class=" bg-white rounded-lg w-1/2 p-6 mt-6 ml-6 container">
-            <h1 class="text-slate-900  mt-1 text-base font-semibold tracking-tight
-            border-b  border-gray-900/10">Personal Data:</h1>
-            <div class="flex flex-row">
-                <div class="mt-2 mb-4 ">
-                    Name: 
-                </div>
-                <div class="flex text-slate-500  ml-2 mt-2 mb-4 ">
-                    {{ .Name }}
-                    </div>
-            </div>
-            <div class="flex flex-row">
-                <div class="mt-2 mb-4 ">
-                    Email: 
-                </div>
-                <div class="flex text-slate-500  ml-2 mt-2 mb-4 ">
-                    {{ .Email }}
-                    </div>
-            </div>
-        </div>
-</div> 
-
-    {{ range .Entry }}
-    <div class="bg-white rounded-lg  w-1/2 p-6">
-        <div class="text-slate-900  mt-1 text-base font-semibold tracking-tight
-        border-b  border-gray-900/10">
-            {{ .Name }}
-        </div>
-        <div class="">
-            {{ .Message }}
-        </div>
-        <div class="">
-            {{ .CreatedAt}}
-        </div>
+  <div class="flex justify-start items-start bg-slate-300 h-screen flex-1">
+    <div id="user-{{ .ID }}" class="bg-white rounded-lg w-1/2 p-6 mt-6 ml-6 container">
+      <h1 class="text-slate-900 mt-1 text-base font-semibold tracking-tight border-b border-gray-900/10">
+        Personal Data:
+      </h1>
+      <div class="flex flex-row">
+        <div class="mt-2 mb-4">Name:</div>
+        <div class="flex text-slate-500 ml-2 mt-2 mb-4">{{ .Name }}</div>
+      </div>
+      <div class="flex flex-row">
+        <div class="mt-2 mb-4">Email:</div>
+        <div class="flex text-slate-500 ml-2 mt-2 mb-4">{{ .Email }}</div>
+      </div>
+      <div class="flex flex-row gap-x-2">
+        <button type="button" hx-post="/user/dashboard/{{ .ID }}" hx-target="#user-{{ .ID }}" hx-swap="outerHTML"
+          class="rounded-lg w-1/4 bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm border-2 border-indigo-600 hover:text-indigo-600 hover:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+          Change user data
+        </button>
+      </div>
     </div>
-    {{ end }}    
-</div> 
+  </div>
+</div>
 
-
-{{ end }}
+{{ range .Entry }}
+<div class="bg-white rounded-lg w-1/2 p-6">
+  <div class="text-slate-900 mt-1 text-base font-semibold tracking-tight border-b border-gray-900/10">
+    {{ .Name }}
+  </div>
+  <div class="">{{ .Message }}</div>
+  <div class="">{{ .CreatedAt}}</div>
+</div>
+{{ end }} {{ end }}
