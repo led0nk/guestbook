@@ -86,6 +86,7 @@ func (s *Server) ServeHTTP() {
 	adminMiddleware.HandleFunc("/dashboard/{ID}", s.updateUser()).Methods(http.MethodPost)
 	adminMiddleware.HandleFunc("/dashboard/{ID}", s.saveUser()).Methods(http.MethodPut)
 	adminMiddleware.HandleFunc("/dashboard/{ID}/verify", s.resendVer()).Methods(http.MethodPut)
+	adminMiddleware.HandleFunc("/dashboard/{ID}/password-reset", s.passwordReset()).Methods(http.MethodPut)
 	// log.Info("listening to: ")
 
 	srv := &http.Server{
@@ -366,7 +367,7 @@ func (s *Server) updateUser() http.HandlerFunc {
 			s.log.Warn("User Error", err)
 			return
 		}
-		err = s.templates.TmplAdminInput.Execute(w, &user)
+		err = s.templates.TmplAdminUser.ExecuteTemplate(w, "user-update", &user)
 		if err != nil {
 			s.log.Warn("Template Error: ", err)
 			return
@@ -404,7 +405,7 @@ func (s *Server) saveUser() http.HandlerFunc {
 			s.log.Warn("User Error: ", err)
 			return
 		}
-		err = s.templates.TmplAdminUser.Execute(w, &updatedUser)
+		err = s.templates.TmplAdminUser.ExecuteTemplate(w, "user", &updatedUser)
 		if err != nil {
 			s.log.Warn("Template Error: ", err)
 			return
@@ -436,7 +437,7 @@ func (s *Server) resendVer() http.HandlerFunc {
 			s.log.Warn("User Error: ", err)
 			return
 		}
-		err = s.templates.TmplAdminUser.Execute(w, &user)
+		err = s.templates.TmplAdminUser.ExecuteTemplate(w, "user", &user)
 		if err != nil {
 			s.log.Warn("Template Error: ", err)
 			return
@@ -466,5 +467,34 @@ func (s *Server) forgotPW() http.HandlerFunc {
 			return
 		}
 		http.Redirect(w, r, "/login", http.StatusFound)
+	}
+}
+
+func (s *Server) passwordReset() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := uuid.Parse(mux.Vars(r)["ID"])
+		if err != nil {
+			s.log.Warn("UUID Error: ", err)
+			return
+		}
+		user, err := s.userstore.GetUserByID(userID)
+		if err != nil {
+			s.log.Warn("User Error: ", err)
+			return
+		}
+		newPW := utils.RandomString(8)
+		user.Password = []byte(newPW)
+		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(newPW), 14)
+		err = s.mailer.SendPWMail(user, s.templates)
+		if err != nil {
+			s.log.Warn("Mailer Error: ", err)
+			return
+		}
+		user.Password = hashedpassword
+		err = s.userstore.UpdateUser(user)
+		if err != nil {
+			s.log.Warn("User Error: ", err)
+			return
+		}
 	}
 }

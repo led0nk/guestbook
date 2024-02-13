@@ -16,7 +16,6 @@ type TemplateHandler struct {
 	TmplVerification *template.Template
 	TmplVerMail      *template.Template
 	TmplAdmin        *template.Template
-	TmplAdminInput   *template.Template
 	TmplAdminUser    *template.Template
 }
 
@@ -36,8 +35,7 @@ func NewTemplateHandler() *TemplateHandler {
 	verificationTemplate := "templates/verification.html"
 	verMailTemplate := []string{"templates/verMail.html"}
 	adminTemplate := "templates/admin.html"
-	adminInputTemplate := []string{"templates/adminInput.html"}
-	adminUserTemplate := []string{"templates/adminUser.html"}
+	adminUserTemplate := []string{"templates/adminUserBlocks.html"}
 
 	return &TemplateHandler{
 		TmplHome:         template.Must(template.ParseFS(templates, append(loggedoutTemplates, homeTemplate)...)),
@@ -50,7 +48,6 @@ func NewTemplateHandler() *TemplateHandler {
 		TmplVerification: template.Must(template.ParseFS(templates, append(loggedoutTemplates, verificationTemplate)...)),
 		TmplVerMail:      template.Must(template.ParseFS(templates, verMailTemplate...)),
 		TmplAdmin:        template.Must(template.ParseFS(templates, append(loggedinTemplates, adminTemplate)...)),
-		TmplAdminInput:   template.Must(template.ParseFS(templates, adminInputTemplate...)),
 		TmplAdminUser:    template.Must(template.ParseFS(templates, adminUserTemplate...)),
 	}
 }

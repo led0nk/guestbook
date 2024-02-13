@@ -106,8 +106,8 @@
 		"entry": null,
 		"isadmin": false,
 		"isverified": true,
-		"verificationstring": "9zvNaR",
-		"expirationtime": "2024-02-12T14:20:19.204063246+01:00"
+		"verificationstring": "bX2KUQ",
+		"expirationtime": "2024-02-12T17:38:03.130358332+01:00"
 	},
 	"5d689e99-db97-4745-8877-55db65e6f83b": {
 		"id": "5d689e99-db97-4745-8877-55db65e6f83b",
@@ -133,9 +133,9 @@
 	},
 	"89a9f1a8-d859-4c9b-a029-e9c0d930c656": {
 		"id": "89a9f1a8-d859-4c9b-a029-e9c0d930c656",
-		"email": "",
+		"email": "serious@sam.de",
 		"name": "Serious Sam",
-		"password": "JDJhJDE0JFpQOHZzM01BOXR0MzViaVRoTVNkbHV6SXZEdnVHaW1ORFdxRXZaNjRGUWFCUmNvVEt6Vm9p",
+		"password": "JDJhJDE0JGU1TXFPMlM3QXNRWWs4cFhWLkJ3VS5LVUpySGdTZ21Ta29RLzR0MHFPSDc2TEoxMVNZejV5",
 		"entry": null,
 		"isadmin": false,
 		"isverified": false,
@@ -166,7 +166,7 @@
 	},
 	"9f9b6a88-a31c-40db-a7a5-c50d4d9966cb": {
 		"id": "9f9b6a88-a31c-40db-a7a5-c50d4d9966cb",
-		"email": "",
+		"email": "peter@parker.de",
 		"name": "Peter Parker",
 		"password": "JDJhJDE0JDhzSWxzdzVkNnhzMFRQR2RjdUxuUk8zSVY1bDR5WVVvWmE5UFpvSzg1VndTLklxNi9mendx",
 		"entry": null,
