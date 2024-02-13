@@ -14,6 +14,7 @@ type GuestBookStore interface {
 	DeleteEntry(uuid.UUID) error
 	GetEntryByName(string) ([]*model.GuestbookEntry, error)
 	GetEntryByID(uuid.UUID) ([]*model.GuestbookEntry, error)
+	GetEntryBySnippet(string) ([]*model.GuestbookEntry, error)
 }
 
 type UserStore interface {

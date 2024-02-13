@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -151,5 +152,23 @@ func (b *BookStorage) GetEntryByID(id uuid.UUID) ([]*model.GuestbookEntry, error
 		return nil, errors.New("no entries found for ")
 
 	}
+	return entries, nil
+}
+
+func (b *BookStorage) GetEntryBySnippet(snippet string) ([]*model.GuestbookEntry, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	entries := []*model.GuestbookEntry{}
+	for _, entry := range b.entries {
+		if strings.Contains(entry.Name, snippet) {
+			entries = append(entries, entry)
+		}
+	}
+	if len(entries) == 0 {
+		return nil, errors.New("no entries found for " + snippet)
+	}
+
+	sort.Slice(entries, func(i, j int) bool { return entries[i].CreatedAt > entries[j].CreatedAt })
 	return entries, nil
 }
