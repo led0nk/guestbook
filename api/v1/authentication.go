@@ -317,9 +317,14 @@ func (s *Server) submitUserData() http.HandlerFunc {
 			return
 		}
 		updatedUser := model.User{
-			ID:    user.ID,
-			Name:  r.FormValue("Name"),
-			Email: r.FormValue("Email"),
+			ID:               user.ID,
+			Password:         user.Password,
+			Name:             r.FormValue("Name"),
+			Email:            r.FormValue("Email"),
+			IsAdmin:          user.IsAdmin,
+			IsVerified:       user.IsVerified,
+			VerificationCode: user.VerificationCode,
+			ExpirationTime:   user.ExpirationTime,
 		}
 		err = s.userstore.UpdateUser(&updatedUser)
 		if err != nil {

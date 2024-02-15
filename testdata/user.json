@@ -98,17 +98,6 @@
 		"verificationstring": "COdM6D",
 		"expirationtime": "2024-02-01T12:33:17.583397928+01:00"
 	},
-	"53f5913a-34c8-47e8-a49a-a04c12a50150": {
-		"id": "53f5913a-34c8-47e8-a49a-a04c12a50150",
-		"email": "peter@zwegat.de",
-		"name": "Peter Zwegat",
-		"password": "JDJhJDE0JDhkMWJKZ3FmbDcvTjNhZU82eEpUdk9kOG1uVXFwdWh1aTdxcjNFL2FqR0xldFFZUjFXTFh1",
-		"entry": null,
-		"isadmin": false,
-		"isverified": true,
-		"verificationstring": "bX2KUQ",
-		"expirationtime": "2024-02-12T17:38:03.130358332+01:00"
-	},
 	"5d689e99-db97-4745-8877-55db65e6f83b": {
 		"id": "5d689e99-db97-4745-8877-55db65e6f83b",
 		"email": "hans@zimmer.com",
@@ -119,17 +108,6 @@
 		"isverified": false,
 		"verificationstring": "fVgpyc",
 		"expirationtime": "2024-02-04T18:05:35.224313104+01:00"
-	},
-	"76d87b31-15b6-4039-91ea-803814b187de": {
-		"id": "76d87b31-15b6-4039-91ea-803814b187de",
-		"email": "admin@admin.de",
-		"name": "Admin Admin1",
-		"password": null,
-		"entry": null,
-		"isadmin": false,
-		"isverified": false,
-		"verificationstring": "",
-		"expirationtime": "0001-01-01T00:00:00Z"
 	},
 	"85944b93-a681-4bb1-ad2e-2ebbcf0fd33e": {
 		"id": "85944b93-a681-4bb1-ad2e-2ebbcf0fd33e",
@@ -186,6 +164,17 @@
 		"verificationstring": "Y8HnO7",
 		"expirationtime": "2024-02-12T14:49:25.555355507+01:00"
 	},
+	"a0e5d9a7-b7eb-4567-9239-dcf79866ee36": {
+		"id": "a0e5d9a7-b7eb-4567-9239-dcf79866ee36",
+		"email": "admin@admin.de",
+		"name": "Admin Admin",
+		"password": "JDJhJDE0JHlFeWR5dWE4L3lweXNHMmZFUmdqWU9LREd3ZkVUL1h0UmJwYjlyeUc2elpCaDlCSDQvYVky",
+		"entry": null,
+		"isadmin": false,
+		"isverified": true,
+		"verificationstring": "hjhHDM",
+		"expirationtime": "2024-02-17T00:06:56.734917216+01:00"
+	},
 	"ab0b64cd-69d9-4365-bbd8-3f6d4661bf9a": {
 		"id": "ab0b64cd-69d9-4365-bbd8-3f6d4661bf9a",
 		"email": "Batman@arkham.com",
@@ -193,7 +182,7 @@
 		"password": "JDJhJDE0JE1BdUMzM0VzSjVmSU85OUIwUWZuSk9hc053ZFc5bXpLMG43TkYzeGs0M2lWZFJQMXQyT3Vl",
 		"entry": null,
 		"isadmin": false,
-		"isverified": false,
+		"isverified": true,
 		"verificationstring": "Kqx3M6",
 		"expirationtime": "2024-02-02T18:45:03.800247449+01:00"
 	},
