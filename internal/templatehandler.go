@@ -30,16 +30,16 @@ func NewTemplateHandler() *TemplateHandler {
 	homeTemplate := "templates/content.html"
 	searchTemplate := "templates/search.html"
 	searchResultTemplate := []string{"templates/searchResult.html"}
-	loginTemplate := "templates/login.html"
-	forgotTemplate := "templates/forgot.html"
-	signupTemplate := "templates/signup.html"
-	dashboardTemplate := "templates/dashboard.html"
-	dashboardUserTemplate := []string{"templates/userBlocks.html"}
+	loginTemplate := "templates/auth/login.html"
+	forgotTemplate := "templates/auth/forgot.html"
+	signupTemplate := "templates/auth/signup.html"
+	dashboardTemplate := "templates/user/dashboard.html"
+	dashboardUserTemplate := []string{"templates/user/userBlocks.html"}
 	createTemplate := "templates/create.html"
-	verificationTemplate := "templates/verification.html"
-	verMailTemplate := []string{"templates/verMail.html"}
-	adminTemplate := "templates/admin.html"
-	adminUserTemplate := []string{"templates/adminUserBlocks.html"}
+	verificationTemplate := "templates/auth/verification.html"
+	verMailTemplate := []string{"templates/auth/verMail.html"}
+	adminTemplate := "templates/admin/admin.html"
+	adminUserTemplate := []string{"templates/admin/adminUserBlocks.html"}
 
 	return &TemplateHandler{
 		TmplHome:          template.Must(template.ParseFS(templates, append(loggedoutTemplates, homeTemplate)...)),
