@@ -303,3 +303,33 @@ func (s *Server) search() http.HandlerFunc {
 		}
 	}
 }
+
+func (s *Server) submitUserData() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := uuid.Parse(mux.Vars(r)["ID"])
+		if err != nil {
+			s.log.Warn("UUID Error: ", err)
+			return
+		}
+		user, err := s.userstore.GetUserByID(userID)
+		if err != nil {
+			s.log.Warn("User Error: ", err)
+			return
+		}
+		updatedUser := model.User{
+			ID:    user.ID,
+			Name:  r.FormValue("Name"),
+			Email: r.FormValue("Email"),
+		}
+		err = s.userstore.UpdateUser(&updatedUser)
+		if err != nil {
+			s.log.Warn("User Error: ", err)
+			return
+		}
+		err = s.templates.TmplDashboardUser.ExecuteTemplate(w, "user", &updatedUser)
+		if err != nil {
+			s.log.Warn("Template Error: ", err)
+			return
+		}
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"html"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	templates "github.com/led0nk/guestbook/internal"
 	db "github.com/led0nk/guestbook/internal/database"
@@ -70,6 +71,8 @@ func (s *Server) ServeHTTP() {
 	authMiddleware.HandleFunc("/verify", s.verifyAuth()).Methods(http.MethodPost)
 	// routing through authentication via /user
 	authMiddleware.HandleFunc("/dashboard", s.dashboardHandler()).Methods(http.MethodGet)
+	authMiddleware.HandleFunc("/dashboard/{ID}", s.changeUserData()).Methods(http.MethodPost)
+	authMiddleware.HandleFunc("/dashboard/{ID}", s.submitUserData()).Methods(http.MethodPut)
 	authMiddleware.HandleFunc("/create", s.createHandler).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/search", s.searchHandler).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/search/", s.search()).Methods(http.MethodGet)
@@ -216,5 +219,25 @@ func (s *Server) createEntry() http.HandlerFunc {
 			return
 		}
 		http.Redirect(w, r, "/user/dashboard", http.StatusFound)
+	}
+}
+
+func (s *Server) changeUserData() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := uuid.Parse(mux.Vars(r)["ID"])
+		if err != nil {
+			s.log.Warn("UUID Error: ", err)
+			return
+		}
+		user, err := s.userstore.GetUserByID(userID)
+		if err != nil {
+			s.log.Warn("User Error: ", err)
+			return
+		}
+		err = s.templates.TmplDashboardUser.ExecuteTemplate(w, "user-update", user)
+		if err != nil {
+			s.log.Warn("Template Error: ", err)
+			return
+		}
 	}
 }
