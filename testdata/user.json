@@ -170,7 +170,7 @@
 		"name": "Admin Admin",
 		"password": "JDJhJDE0JHlFeWR5dWE4L3lweXNHMmZFUmdqWU9LREd3ZkVUL1h0UmJwYjlyeUc2elpCaDlCSDQvYVky",
 		"entry": null,
-		"isadmin": false,
+		"isadmin": true,
 		"isverified": true,
 		"verificationstring": "hjhHDM",
 		"expirationtime": "2024-02-17T00:06:56.734917216+01:00"

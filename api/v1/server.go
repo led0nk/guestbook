@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"errors"
 	"html"
 	"net/http"
 
@@ -10,14 +11,14 @@ import (
 	db "github.com/led0nk/guestbook/internal/database"
 	"github.com/led0nk/guestbook/internal/middleware"
 	"github.com/led0nk/guestbook/internal/model"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog"
 )
 
 type Server struct {
 	addr       string
 	mailer     Mailerservice
 	templates  *templates.TemplateHandler
-	log        logrus.FieldLogger
+	log        zerolog.Logger
 	mw         []mux.MiddlewareFunc
 	bookstore  db.GuestBookStore
 	userstore  db.UserStore
@@ -28,7 +29,7 @@ func NewServer(
 	address string,
 	mailer Mailerservice,
 	templates *templates.TemplateHandler,
-	logger logrus.FieldLogger,
+	logger zerolog.Logger,
 	bStore db.GuestBookStore,
 	uStore db.UserStore,
 	tStore db.TokenStore,
@@ -77,7 +78,6 @@ func (s *Server) ServeHTTP() {
 	authMiddleware.HandleFunc("/search", s.searchHandler).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/search/", s.search()).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/create", s.createEntry()).Methods(http.MethodPost)
-	authMiddleware.HandleFunc("/dashboard/{ID}/verify", s.resendVer()).Methods(http.MethodPut)
 	authMiddleware.HandleFunc("/dashboard/{ID}/password-reset", s.passwordReset()).Methods(http.MethodPut)
 	// routing through admincheck via /admin
 	adminMiddleware.HandleFunc("/dashboard", s.adminHandler).Methods(http.MethodGet)
@@ -94,7 +94,7 @@ func (s *Server) ServeHTTP() {
 	}
 	err := srv.ListenAndServe()
 	if err != nil {
-		s.log.Fatal(err)
+		s.log.Fatal().Err(err).Msg("")
 	}
 }
 
@@ -112,7 +112,7 @@ func (s *Server) handlePage() http.HandlerFunc {
 
 		err := s.templates.TmplHome.Execute(w, &entries)
 		if err != nil {
-			s.log.Warn("Template Error: ", err)
+			s.log.Error().Err(errors.New("template")).Msg("")
 			return
 		}
 
@@ -123,12 +123,12 @@ func (s *Server) handlePage() http.HandlerFunc {
 func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 	entries, err := s.bookstore.ListEntries()
 	if err != nil {
-		s.log.Warn("User Error: ", err)
+		s.log.Err(errors.New("user")).Msg(err.Error())
 		return
 	}
 	err = s.templates.TmplSearch.Execute(w, entries)
 	if err != nil {
-		s.log.Warn("Template Error: ", err)
+		s.log.Err(errors.New("template")).Msg(err.Error())
 		return
 	}
 }
@@ -138,7 +138,7 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 	err := s.templates.TmplLogin.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.Warn("Template Error: ", err)
+		s.log.Err(errors.New("template")).Msg(err.Error())
 		return
 	}
 }
@@ -148,7 +148,7 @@ func (s *Server) signupHandler(w http.ResponseWriter, r *http.Request) {
 	err := s.templates.TmplSignUp.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.Warn("Template Error: ", err)
+		s.log.Err(errors.New("template")).Msg(err.Error())
 		return
 	}
 }
@@ -163,7 +163,7 @@ func (s *Server) dashboardHandler() http.HandlerFunc {
 		err := s.templates.TmplDashboard.Execute(w, user)
 		if err != nil {
 			w.WriteHeader(http.StatusBadGateway)
-			s.log.Warn("Template Error: ", err)
+			s.log.Err(errors.New("template")).Msg(err.Error())
 			return
 		}
 
@@ -174,7 +174,7 @@ func (s *Server) createHandler(w http.ResponseWriter, r *http.Request) {
 	err := s.templates.TmplCreate.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.Warn("Template Error: ", err)
+		s.log.Err(errors.New("template")).Msg(err.Error())
 		return
 	}
 }
@@ -183,7 +183,7 @@ func (s *Server) verifyHandler(w http.ResponseWriter, r *http.Request) {
 	err := s.templates.TmplVerification.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.Warn("Template Error: ", err)
+		s.log.Err(errors.New("template")).Msg(err.Error())
 		return
 	}
 }
@@ -193,7 +193,7 @@ func (s *Server) adminHandler(w http.ResponseWriter, r *http.Request) {
 	err := s.templates.TmplAdmin.Execute(w, &users)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.Warn("Template Error: ", err)
+		s.log.Err(errors.New("template")).Msg(err.Error())
 		return
 	}
 }
@@ -202,7 +202,7 @@ func (s *Server) forgotHandler(w http.ResponseWriter, r *http.Request) {
 	err := s.templates.TmplForgot.Execute(w, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.Warn("Template Error: ", err)
+		s.log.Err(errors.New("template")).Msg(err.Error())
 		return
 	}
 }
@@ -217,7 +217,7 @@ func (s *Server) createEntry() http.HandlerFunc {
 
 		_, err := s.bookstore.CreateEntry(&newEntry)
 		if err != nil {
-			s.log.Warn("Entry Error: ", err)
+			s.log.Err(errors.New("entry")).Msg(err.Error())
 			return
 		}
 		http.Redirect(w, r, "/user/dashboard", http.StatusFound)
@@ -228,17 +228,17 @@ func (s *Server) changeUserData() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := uuid.Parse(mux.Vars(r)["ID"])
 		if err != nil {
-			s.log.Warn("UUID Error: ", err)
+			s.log.Err(errors.New("uuid")).Msg(err.Error())
 			return
 		}
 		user, err := s.userstore.GetUserByID(userID)
 		if err != nil {
-			s.log.Warn("User Error: ", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 		err = s.templates.TmplDashboardUser.ExecuteTemplate(w, "user-update", user)
 		if err != nil {
-			s.log.Warn("Template Error: ", err)
+			s.log.Err(errors.New("template")).Msg(err.Error())
 			return
 		}
 	}

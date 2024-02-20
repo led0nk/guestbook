@@ -1,11 +1,13 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	db "github.com/led0nk/guestbook/internal/database"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog"
 )
 
 type ResponseRecorder struct {
@@ -19,102 +21,80 @@ func (rec *ResponseRecorder) WriteHeader(statusCode int) {
 }
 
 // logging middleware
-func Logger(log logrus.FieldLogger) mux.MiddlewareFunc {
+func Logger(logger zerolog.Logger) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var arrow string
 			rec := &ResponseRecorder{
 				ResponseWriter: w,
 				StatusCode:     http.StatusOK,
 			}
 
-			switch r.Method {
-			case http.MethodPost:
-				post := " <----- "
-				arrow = post
-			default:
-				others := " -----> "
-				arrow = others
-			}
-			log.Info("[", rec.StatusCode, "]", r.URL, arrow, "["+r.Method+"]") //StatusCode in progress, not working yet
+			logger.Info().Str(r.Method, r.URL.String()).Msg(strconv.Itoa(rec.StatusCode))
 			next.ServeHTTP(rec, r)
 		})
 	}
 }
 
 // authentication middleware, check for session values -> redirect
-func Auth(t db.TokenStore, log logrus.FieldLogger) mux.MiddlewareFunc {
+func Auth(t db.TokenStore, logger zerolog.Logger) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			session, err := r.Cookie("session")
 			if err != nil {
-				log.Error("there are no cookies of type session")
+				logger.Err(errors.New("cookie")).Msg(err.Error())
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
 
 			isValid, err := t.Valid(session.Value)
 			if !isValid {
-				log.Error("Tokenerror: ", err)
+				logger.Err(errors.New("token")).Msg(err.Error())
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
 
 			cookie, err := t.Refresh(session.Value)
 			if err != nil {
-				log.Error("Error Refreshing: ", err)
+				logger.Err(errors.New("token")).Msg(err.Error())
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}
 
 			http.SetCookie(w, cookie)
-			log.Info("Middleware: Authentication checked")
+			logger.Info().Str("auth-mw", "done").Msg("")
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-func AdminAuth(t db.TokenStore, u db.UserStore, log logrus.FieldLogger) mux.MiddlewareFunc {
+func AdminAuth(t db.TokenStore, u db.UserStore, logger zerolog.Logger) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			session, err := r.Cookie("session")
 			if err != nil {
-				log.Error("there are no cookies of type session")
+				logger.Err(errors.New("cookie")).Msg(err.Error())
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
 
 			isValid, err := t.Valid(session.Value)
 			if !isValid {
-				log.Warn("Token Error: ", err)
+				logger.Err(errors.New("token")).Msg(err.Error())
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
 
-			userID, err := t.GetTokenValue(session)
-			if err != nil {
-				log.Warn("Token Error: ", err)
-				return
-			}
-			user, err := u.GetUserByID(userID)
-			if err != nil {
-				log.Warn("User Error: ", err)
-				return
-			}
-			if !user.IsAdmin {
-				log.Warn("User Error: User is not a registered admin!")
-				http.Redirect(w, r, "/", http.StatusFound)
-				return
-			}
 			cookie, err := t.Refresh(session.Value)
 			if err != nil {
-				log.Warn("Error Refreshing: ", err)
+				logger.Err(errors.New("token")).Msg(err.Error())
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}
 
 			http.SetCookie(w, cookie)
-			log.Info("Middleware: Admin checked")
+
+			logger.Info().Str("admin-mw", "done").Msg("")
+
 			next.ServeHTTP(w, r)
 		})
 	}

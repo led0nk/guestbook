@@ -27,6 +27,7 @@ var templates embed.FS
 func NewTemplateHandler() *TemplateHandler {
 	loggedoutTemplates := []string{"templates/index.html", "templates/header.html"}
 	loggedinTemplates := []string{"templates/index.html", "templates/loggedinheader.html"}
+	adminTemplates := []string{"templates/index.html", "templates/admin/adminheader.html"}
 	homeTemplate := "templates/content.html"
 	searchTemplate := "templates/search.html"
 	searchResultTemplate := []string{"templates/searchResult.html"}
@@ -53,7 +54,7 @@ func NewTemplateHandler() *TemplateHandler {
 		TmplCreate:        template.Must(template.ParseFS(templates, append(loggedinTemplates, createTemplate)...)),
 		TmplVerification:  template.Must(template.ParseFS(templates, append(loggedoutTemplates, verificationTemplate)...)),
 		TmplVerMail:       template.Must(template.ParseFS(templates, verMailTemplate...)),
-		TmplAdmin:         template.Must(template.ParseFS(templates, append(loggedinTemplates, adminTemplate)...)),
+		TmplAdmin:         template.Must(template.ParseFS(templates, append(adminTemplates, adminTemplate)...)),
 		TmplAdminUser:     template.Must(template.ParseFS(templates, adminUserTemplate...)),
 	}
 }

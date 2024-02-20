@@ -19,12 +19,12 @@ func (s *Server) passwordReset() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := uuid.Parse(mux.Vars(r)["ID"])
 		if err != nil {
-			s.log.Warn("UUID Error: ", err)
+			s.log.Err(errors.New("uuid")).Msg(err.Error())
 			return
 		}
 		user, err := s.userstore.GetUserByID(userID)
 		if err != nil {
-			s.log.Warn("User Error: ", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 		newPW := utils.RandomString(8)
@@ -32,13 +32,13 @@ func (s *Server) passwordReset() http.HandlerFunc {
 		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(newPW), 14)
 		err = s.mailer.SendPWMail(user, s.templates)
 		if err != nil {
-			s.log.Warn("Mailer Error: ", err)
+			s.log.Err(errors.New("mailer")).Msg(err.Error())
 			return
 		}
 		user.Password = hashedpassword
 		err = s.userstore.UpdateUser(user)
 		if err != nil {
-			s.log.Warn("User Error: ", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 	}
@@ -48,21 +48,21 @@ func (s *Server) passwordReset() http.HandlerFunc {
 func (s *Server) loginAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		email := r.FormValue("email")
-		user, error := s.userstore.GetUserByEmail(email)
-		if error != nil {
-			s.log.Warn("User Error: ", error)
+		user, err := s.userstore.GetUserByEmail(email)
+		if err != nil {
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword(user.Password, []byte(r.FormValue("password"))); err != nil {
-			s.log.Warn("Hashing Error: ", err)
+			s.log.Err(errors.New("hashing")).Msg(err.Error())
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 		cookie, err := s.tokenstore.CreateToken("session", user.ID, utils.FormValueBool(r.FormValue("Rememberme")))
 		if err != nil {
-			s.log.Warn("Token Error: ", err)
+			s.log.Err(errors.New("token")).Msg(err.Error())
 			return
 		}
 
@@ -83,14 +83,14 @@ func (s *Server) logoutAuth() http.HandlerFunc {
 			case errors.Is(err, http.ErrNoCookie):
 				http.Error(w, "cookie not found", http.StatusBadRequest)
 			default:
-				s.log.Warn(err)
+				s.log.Err(errors.New("server")).Msg(err.Error())
 				http.Error(w, "server error", http.StatusInternalServerError)
 			}
 		}
 		userID, _ := s.tokenstore.GetTokenValue(cookie)
 		err = s.tokenstore.DeleteToken(userID)
 		if err != nil {
-			s.log.Warn("Token Error: ", err)
+			s.log.Err(errors.New("token")).Msg(err.Error())
 			return
 		}
 		cookie.MaxAge = -1
@@ -105,7 +105,7 @@ func (s *Server) signupAuth() http.HandlerFunc {
 		r.ParseForm()
 		err := jsondb.ValidateUserInput(r.Form)
 		if err != nil {
-			s.log.Warn("Input Error: ", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			http.Redirect(w, r, "/signup", http.StatusFound)
 			return
 		}
@@ -122,14 +122,14 @@ func (s *Server) signupAuth() http.HandlerFunc {
 		}
 		_, usererr := s.userstore.CreateUser(&newUser)
 		if usererr != nil {
-			s.log.Warn("User error: ", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			http.Redirect(w, r, "/signup", http.StatusFound)
 			w.WriteHeader(http.StatusUnauthorized)
 		}
 
 		err = s.mailer.SendVerMail(&newUser, s.templates)
 		if err != nil {
-			s.log.Warn("Mailer Error: ", err)
+			s.log.Err(errors.New("mailer")).Msg(err.Error())
 			return
 		}
 		http.Redirect(w, r, "/login", http.StatusFound)
@@ -142,17 +142,17 @@ func (s *Server) verifyAuth() http.HandlerFunc {
 		session, _ := r.Cookie("session")
 		userID, err := s.tokenstore.GetTokenValue(session)
 		if err != nil {
-			s.log.Warn("Token Error: ", err)
+			s.log.Err(errors.New("token")).Msg(err.Error())
 			return
 		}
 		ok, err := s.userstore.CodeValidation(userID, r.FormValue("code"))
 		if !ok {
 			http.Redirect(w, r, "/user/verify", http.StatusFound)
-			s.log.Info("User Error: ", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 		if err != nil {
-			s.log.Error("User Error:", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 		http.Redirect(w, r, "/user/dashboard", http.StatusFound)
@@ -164,12 +164,12 @@ func (s *Server) deleteUser() http.HandlerFunc {
 
 		ID, err := uuid.Parse(mux.Vars(r)["ID"])
 		if err != nil {
-			s.log.Warn("UUID Error: ", err)
+			s.log.Err(errors.New("uuid")).Msg(err.Error())
 			return
 		}
 		err = s.userstore.DeleteUser(ID)
 		if err != nil {
-			s.log.Warn("User Error: ", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 		// http.Redirect(w, r, "/admin/dashboard", http.StatusFound)
@@ -181,17 +181,17 @@ func (s *Server) updateUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := uuid.Parse(mux.Vars(r)["ID"])
 		if err != nil {
-			s.log.Warn("UUID Error: ", err)
+			s.log.Err(errors.New("uuid")).Msg(err.Error())
 			return
 		}
 		user, err := s.userstore.GetUserByID(userID)
 		if err != nil {
-			s.log.Warn("User Error", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 		err = s.templates.TmplAdminUser.ExecuteTemplate(w, "user-update", &user)
 		if err != nil {
-			s.log.Warn("Template Error: ", err)
+			s.log.Err(errors.New("template")).Msg(err.Error())
 			return
 		}
 	}
@@ -203,12 +203,12 @@ func (s *Server) saveUser() http.HandlerFunc {
 		r.ParseForm()
 		userID, err := uuid.Parse(mux.Vars(r)["ID"])
 		if err != nil {
-			s.log.Warn("UUID Error: ", err)
+			s.log.Err(errors.New("uuid")).Msg(err.Error())
 			return
 		}
 		user, err := s.userstore.GetUserByID(userID)
 		if err != nil {
-			s.log.Warn("User Error: ", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 
@@ -224,12 +224,12 @@ func (s *Server) saveUser() http.HandlerFunc {
 		}
 		err = s.userstore.UpdateUser(&updatedUser)
 		if err != nil {
-			s.log.Warn("User Error: ", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 		err = s.templates.TmplAdminUser.ExecuteTemplate(w, "user", &updatedUser)
 		if err != nil {
-			s.log.Warn("Template Error: ", err)
+			s.log.Err(errors.New("template")).Msg(err.Error())
 			return
 		}
 	}
@@ -239,29 +239,29 @@ func (s *Server) resendVer() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := uuid.Parse(mux.Vars(r)["ID"])
 		if err != nil {
-			s.log.Warn("UUID Error: ", err)
+			s.log.Err(errors.New("uuid")).Msg(err.Error())
 			return
 		}
 		user, err := s.userstore.GetUserByID(userID)
 		if err != nil {
-			s.log.Warn("User Error: ", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 		user.VerificationCode = utils.RandomString(6)
 		user.ExpirationTime = time.Now().Add(time.Minute * 5)
 		err = s.mailer.SendVerMail(user, s.templates)
 		if err != nil {
-			s.log.Warn("Mailer Error: ", err)
+			s.log.Err(errors.New("mailer")).Msg(err.Error())
 			return
 		}
 		err = s.userstore.UpdateUser(user)
 		if err != nil {
-			s.log.Warn("User Error: ", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 		err = s.templates.TmplAdminUser.ExecuteTemplate(w, "user", &user)
 		if err != nil {
-			s.log.Warn("Template Error: ", err)
+			s.log.Err(errors.New("template")).Msg(err.Error())
 			return
 		}
 	}
@@ -271,7 +271,7 @@ func (s *Server) forgotPW() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, err := s.userstore.GetUserByEmail(r.FormValue("email"))
 		if err != nil {
-			s.log.Warn("User Error: ", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 		newPW := utils.RandomString(8)
@@ -279,13 +279,13 @@ func (s *Server) forgotPW() http.HandlerFunc {
 		hashedpassword, _ := bcrypt.GenerateFromPassword([]byte(newPW), 14)
 		err = s.mailer.SendPWMail(user, s.templates)
 		if err != nil {
-			s.log.Warn("Mailer Error: ", err)
+			s.log.Err(errors.New("mailer")).Msg(err.Error())
 			return
 		}
 		user.Password = hashedpassword
 		err = s.userstore.UpdateUser(user)
 		if err != nil {
-			s.log.Warn("User Error: ", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 		http.Redirect(w, r, "/login", http.StatusFound)
@@ -298,7 +298,7 @@ func (s *Server) search() http.HandlerFunc {
 		entry, _ := s.bookstore.GetEntryBySnippet(userName)
 		err := s.templates.TmplSearchResult.ExecuteTemplate(w, "result", &entry)
 		if err != nil {
-			s.log.Warn("Template Error: ", err)
+			s.log.Err(errors.New("template")).Msg(err.Error())
 			return
 		}
 	}
@@ -308,12 +308,12 @@ func (s *Server) submitUserData() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := uuid.Parse(mux.Vars(r)["ID"])
 		if err != nil {
-			s.log.Warn("UUID Error: ", err)
+			s.log.Err(errors.New("uuid")).Msg(err.Error())
 			return
 		}
 		user, err := s.userstore.GetUserByID(userID)
 		if err != nil {
-			s.log.Warn("User Error: ", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 		updatedUser := model.User{
@@ -328,12 +328,12 @@ func (s *Server) submitUserData() http.HandlerFunc {
 		}
 		err = s.userstore.UpdateUser(&updatedUser)
 		if err != nil {
-			s.log.Warn("User Error: ", err)
+			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 		err = s.templates.TmplDashboardUser.ExecuteTemplate(w, "user", &updatedUser)
 		if err != nil {
-			s.log.Warn("Template Error: ", err)
+			s.log.Err(errors.New("template")).Msg(err.Error())
 			return
 		}
 	}

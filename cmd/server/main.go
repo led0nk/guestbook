@@ -4,6 +4,7 @@ import (
 	"flag"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	v1 "github.com/led0nk/guestbook/api/v1"
@@ -14,22 +15,13 @@ import (
 	"github.com/led0nk/guestbook/internal/mailer"
 	"github.com/led0nk/guestbook/internal/middleware"
 	"github.com/led0nk/guestbook/token"
-	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog"
 )
 
 func main() {
-	logger := logrus.New()
-	log.SetFormatter(&log.TextFormatter{
-		FullTimestamp:   true,
-		TimestampFormat: "2006/01/02 15:04:05",
-	})
-	log.SetLevel(log.DebugLevel)
-	logger.SetFormatter(&log.TextFormatter{
-		FullTimestamp:   true,
-		TimestampFormat: "2006/01/02 15:04:05",
-	})
-	logger.SetLevel(log.DebugLevel)
+	logger := zerolog.New(
+		zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339},
+	).Level(zerolog.TraceLevel).With().Timestamp().Caller().Logger()
 	var (
 		addr     = flag.String("addr", "localhost:8080", "server port")
 		entryStr = flag.String("entrydata", "file://../../testdata/entries.json", "link to entry-database")
@@ -43,10 +35,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	log.Info(u)
+	logger.Info().Msg(u.String())
 	switch u.Scheme {
 	case "file":
-		log.Info("opening: ", u.Host+u.Path)
+		logger.Info().Msg("opening: " + u.Host + u.Path)
 		bookStorage, _ := jsondb.CreateBookStorage(u.Host + u.Path)
 		userStorage, _ := jsondb.CreateUserStorage("../../testdata/user.json")
 		bStore = bookStorage
