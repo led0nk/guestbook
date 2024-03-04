@@ -13,7 +13,6 @@ import (
 	db "github.com/led0nk/guestbook/internal/database"
 	"github.com/led0nk/guestbook/internal/database/jsondb"
 	"github.com/led0nk/guestbook/internal/mailer"
-	"github.com/led0nk/guestbook/internal/middleware"
 	"github.com/led0nk/guestbook/token"
 	"github.com/rs/zerolog"
 )
@@ -65,6 +64,6 @@ func main() {
 	mailer := mailer.NewMailer(os.Getenv("EMAIL"), os.Getenv("SMTPPW"), os.Getenv("HOST"), os.Getenv("PORT"))
 	//create Server
 	//TODO: not optimized -> just want to put input var's of middleware and give them logger and storage inside server
-	server := v1.NewServer(address, mailer, templates, logger, bStore, uStore, tStore, middleware.Logger(logger), middleware.Auth(tStore, logger), middleware.AdminAuth(tStore, uStore, logger))
+	server := v1.NewServer(address, mailer, templates, logger, bStore, uStore, tStore)
 	server.ServeHTTP()
 }
