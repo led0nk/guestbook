@@ -4,10 +4,8 @@ import (
 	"flag"
 	"net/url"
 	"os"
-	"regexp"
 	"time"
 
-	"github.com/joho/godotenv"
 	v1 "github.com/led0nk/guestbook/api/v1"
 	"github.com/led0nk/guestbook/cmd/utils"
 	templates "github.com/led0nk/guestbook/internal"
@@ -62,7 +60,7 @@ func main() {
 	//create templatehandler
 	templates := templates.NewTemplateHandler()
 	//create mailerservice
-	LoadEnv(logger)
+	utils.LoadEnv(logger)
 	mailer := mailer.NewMailer(
 		os.Getenv("EMAIL"),
 		os.Getenv("SMTPPW"),
@@ -72,18 +70,4 @@ func main() {
 	//TODO: not optimized -> just want to put input var's of middleware and give them logger and storage inside server
 	server := v1.NewServer(address, mailer, templates, logger, bStore, uStore, tStore)
 	server.ServeHTTP()
-}
-
-// LoadEnv loads env vars from .env
-func LoadEnv(logger zerolog.Logger) {
-	re := regexp.MustCompile(`^(.*` + "guestbook" + `)`)
-	cwd, _ := os.Getwd()
-	rootPath := re.Find([]byte(cwd))
-
-	err := godotenv.Load(string(rootPath) + `/testdata` + `/.env`)
-	if err != nil {
-		logger.Fatal().Err(err).Msg(cwd)
-
-		os.Exit(-1)
-	}
 }
