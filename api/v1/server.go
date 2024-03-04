@@ -19,7 +19,6 @@ type Server struct {
 	mailer     Mailerservice
 	templates  *templates.TemplateHandler
 	log        zerolog.Logger
-	mw         []mux.MiddlewareFunc
 	bookstore  db.GuestBookStore
 	userstore  db.UserStore
 	tokenstore db.TokenStore
@@ -33,14 +32,12 @@ func NewServer(
 	bStore db.GuestBookStore,
 	uStore db.UserStore,
 	tStore db.TokenStore,
-	middleware ...mux.MiddlewareFunc,
 ) *Server {
 	return &Server{
 		addr:       address,
 		mailer:     mailer,
 		templates:  templates,
 		log:        logger,
-		mw:         middleware,
 		bookstore:  bStore,
 		userstore:  uStore,
 		tokenstore: tStore,
@@ -55,7 +52,7 @@ func (s *Server) ServeHTTP() {
 	adminMiddleware := mux.NewRouter().PathPrefix("/admin").Subrouter()
 	authMiddleware.Use(middleware.Auth(s.tokenstore, s.log))
 	adminMiddleware.Use(middleware.AdminAuth(s.tokenstore, s.userstore, s.log))
-	router.Use(s.mw[0])
+	router.Use(middleware.Logger(s.log))
 	router.PathPrefix("/user").Handler(authMiddleware)
 	router.PathPrefix("/admin").Handler(adminMiddleware)
 	// routing
@@ -87,6 +84,8 @@ func (s *Server) ServeHTTP() {
 	adminMiddleware.HandleFunc("/dashboard/{ID}/verify", s.resendVer()).Methods(http.MethodPut)
 	adminMiddleware.HandleFunc("/dashboard/{ID}/password-reset", s.passwordReset()).Methods(http.MethodPut)
 	// log.Info("listening to: ")
+
+	s.log.Info().Str("listening to", "").Msg("")
 
 	srv := &http.Server{
 		Addr:    s.addr,
