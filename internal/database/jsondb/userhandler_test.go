@@ -1,10 +1,11 @@
-package jsondb
+package jsondb_test
 
 import (
 	"net/url"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/led0nk/guestbook/internal/database/jsondb"
 	"github.com/led0nk/guestbook/internal/model"
 )
 
@@ -14,12 +15,7 @@ func TestCreateUser(t *testing.T) {
 		Name:  "peter müller",
 		Email: "peter@müller.de",
 	}
-
-	ustore, err := CreateUserStorage("../../testdata/test.json")
-	if err != nil {
-		t.Errorf("couldn't create userstorage")
-	}
-
+	ustore := jsondb.UserStorage{}
 	got, err := ustore.CreateUser(&testuser)
 
 	if got == uuid.Nil {
@@ -37,7 +33,7 @@ func TestValidateUserInput(t *testing.T) {
 	v.Add("firstname", "peter")
 	v.Add("lastname", "müller")
 
-	got := ValidateUserInput(v)
+	got := jsondb.ValidateUserInput(v)
 
 	if got != nil {
 		t.Errorf("expected %v, got %v", nil, got)
