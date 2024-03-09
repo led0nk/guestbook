@@ -3,3 +3,9 @@ build:
 
 run: 
 	./bin/main
+
+fmt:
+	go fmt ./...
+
+test: fmt
+	go test -v ./... -failfast

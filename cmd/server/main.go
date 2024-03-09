@@ -67,7 +67,6 @@ func main() {
 		os.Getenv("HOST"),
 		os.Getenv("PORT"))
 	//create Server
-	//TODO: not optimized -> just want to put input var's of middleware and give them logger and storage inside server
 	server := v1.NewServer(address, mailer, templates, logger, bStore, uStore, tStore)
 	server.ServeHTTP()
 }
