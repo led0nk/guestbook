@@ -2,6 +2,8 @@ package jsondb_test
 
 import (
 	"encoding/json"
+	"errors"
+	"net/url"
 	"os"
 	"testing"
 
@@ -9,6 +11,55 @@ import (
 	"github.com/led0nk/guestbook/internal/database/jsondb"
 	"github.com/led0nk/guestbook/internal/model"
 )
+
+func TestValidateUserInput(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    url.Values
+		expected error
+	}{
+		{
+			name: "Valid input",
+			input: url.Values{"firstname": {"John"}, "lastname": {"Doe"},
+				"password": {"password123", "password123"}, "email": {"john@doe.com"}},
+			expected: nil,
+		},
+		{
+			name:     "Empty field",
+			input:    url.Values{"firstname": {""}, "lastname": {"Doe"}, "password": {"password123", "password123"}},
+			expected: errors.New("fields cannot be empty"),
+		},
+		{
+			name:     "Number in firstname",
+			input:    url.Values{"firstname": {"John1"}, "lastname": {"Doe"}, "password": {"password123", "password123"}},
+			expected: errors.New("no numbers allowed"),
+		},
+		{
+			name:     "Mismatched password",
+			input:    url.Values{"firstname": {"John"}, "lastname": {"Doe"}, "password": {"password123", "password456"}},
+			expected: errors.New("password doesn't match, please try again"),
+		},
+		{
+			name:     "Long password",
+			input:    url.Values{"firstname": {"John"}, "lastname": {"Doe"}, "password": {"averylongpasswordthatexceedsseventytwocharactersandistoolongforthistestcase", "averylongpasswordthatexceedsseventytwocharactersandistoolongforthistestcase"}, "email": {"john@doe.com"}},
+			expected: errors.New("password is too long, only 72 characters allowed"),
+		},
+		{
+			name:     "Short password",
+			input:    url.Values{"firstname": {"John"}, "lastname": {"Doe"}, "password": {"short", "short"}},
+			expected: errors.New("password is too short, should be at least 8 characters long"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := jsondb.ValidateUserInput(test.input)
+			if (err != nil && test.expected == nil) || (err == nil && test.expected != nil) || (err != nil && test.expected != nil && err.Error() != test.expected.Error()) {
+				t.Errorf("Test case %s failed. Expected: %v, Got: %v", test.name, test.expected, err)
+			}
+		})
+	}
+}
 
 func TestCreateUser(t *testing.T) {
 	filename := "test_users.json"
