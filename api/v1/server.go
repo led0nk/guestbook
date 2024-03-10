@@ -118,7 +118,7 @@ func (s *Server) handlePage() http.HandlerFunc {
 	}
 }
 
-// TODO: implement r.url q= and list entries after Post method (new Handler)
+// searches with livesearch (htmx)
 func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 	entries, err := s.bookstore.ListEntries()
 	if err != nil {

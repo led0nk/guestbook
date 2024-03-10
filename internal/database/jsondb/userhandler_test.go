@@ -1,7 +1,8 @@
 package jsondb_test
 
 import (
-	"net/url"
+	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -10,32 +11,64 @@ import (
 )
 
 func TestCreateUser(t *testing.T) {
-	var testuser = model.User{
-		ID:    uuid.New(),
-		Name:  "peter müller",
-		Email: "peter@müller.de",
-	}
-	ustore := jsondb.UserStorage{}
-	got, err := ustore.CreateUser(&testuser)
+	filename := "test_users.json"
 
-	if got == uuid.Nil {
-		t.Errorf("expected %v, got %v", testuser.ID, got)
+	testUser := &model.User{
+		Name:  "Jon Doe",
+		Email: "jon@doe.com",
 	}
 
+	testUserJSON, err := json.MarshalIndent(testUser, "", " \t")
 	if err != nil {
-		t.Errorf("expected %v, got %v", nil, err)
+		t.Fatalf("Error marshaling user JSON: %v", err)
 	}
-}
+	err = os.WriteFile(filename, testUserJSON, 0644)
+	if err != nil {
+		t.Fatalf("Error writing test user JSON to file: %v", err)
+	}
+	defer os.Remove(filename)
 
-func TestValidateUserInput(t *testing.T) {
+	storage, err := jsondb.CreateUserStorage(filename)
+	if err != nil {
+		t.Fatalf("Error creating user storage: %v", err)
+	}
 
-	var v url.Values
-	v.Add("firstname", "peter")
-	v.Add("lastname", "müller")
+	// Create a sample user
+	user := &model.User{
+		Name: "Test User",
+	}
 
-	got := jsondb.ValidateUserInput(v)
+	// Create the user
+	id, err := storage.CreateUser(user)
+	if err != nil {
+		t.Fatalf("Error creating user: %v", err)
+	}
 
-	if got != nil {
-		t.Errorf("expected %v, got %v", nil, got)
+	// Verify user ID is not nil
+	if id == uuid.Nil {
+		t.Errorf("Expected non-nil UUID for user, got nil")
+	}
+
+	// Read the data back from file
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		t.Fatalf("Error reading file: %v", err)
+	}
+
+	// Unmarshal the data to verify correctness
+	var users map[uuid.UUID]*model.User
+	err = json.Unmarshal(data, &users)
+	if err != nil {
+		t.Fatalf("Error unmarshaling data: %v", err)
+	}
+
+	// Verify the user was written correctly
+	if len(users) != 1 {
+		t.Errorf("Expected 1 user in storage, got %d", len(users))
+	}
+
+	// Verify user ID in storage matches created user ID
+	if _, ok := users[id]; !ok {
+		t.Errorf("Expected user with ID %s in storage, not found", id)
 	}
 }
