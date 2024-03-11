@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/joho/godotenv"
 	v1 "github.com/led0nk/guestbook/api/v1"
 	"github.com/led0nk/guestbook/cmd/utils"
 	templates "github.com/led0nk/guestbook/internal"
@@ -22,13 +23,18 @@ func main() {
 	).Level(zerolog.TraceLevel).With().Timestamp().Caller().Logger()
 	var (
 		addr     = flag.String("addr", "localhost:8080", "server port")
-		entryStr = flag.String("entrydata", "file://../../testdata/entries.json", "link to entry-database")
-		//userStr  = flag.String("userdata", "file://user.json", "link to user-database")
-		bStore db.GuestBookStore
-		uStore db.UserStore
-		tStore db.TokenStore
+		entryStr = flag.String("entrydata", "file://../../testdata/entries.json", "link/path to entry-database")
+		userStr  = flag.String("userdata", "file://user.json", "link to user-database")
+		envStr   = flag.String("envvar's", "testdata/.env", "path to .env-file")
+		bStore   db.GuestBookStore
+		uStore   db.UserStore
+		tStore   db.TokenStore
 	)
 	flag.Parse()
+	//TODO: implement help function for creating stores
+	store := utils.CheckFlag(entryStr, logger, jsondb.CreateBookStorage(utils.DerefString(entryStr)))
+
+	//differenciating on entry-file / no file
 	u, err := url.Parse(*entryStr)
 	if err != nil {
 		panic(err)
@@ -38,22 +44,39 @@ func main() {
 	case "file":
 		logger.Info().Msg("opening: " + u.Host + u.Path)
 		bookStorage, _ := jsondb.CreateBookStorage(u.Host + u.Path)
-		userStorage, _ := jsondb.CreateUserStorage("../../testdata/user.json")
 		bStore = bookStorage
-		uStore = userStorage
-
 	default:
 		panic("bad storage")
 	}
-	//in memory
-	tokenStorage, _ := token.CreateTokenService(os.Getenv("TOKENSECRET"))
 
+	//differenciating on user-file / no file
+	v, err := url.Parse(*userStr)
+	if err != nil {
+		panic(err)
+	}
+	logger.Info().Msg(u.String())
+	switch v.Scheme {
+	case "file":
+		logger.Info().Msg("opening: " + v.Host + v.Path)
+		userStorage, _ := jsondb.CreateUserStorage(v.Host + v.Path)
+		uStore = userStorage
+	default:
+		panic("bad storage")
+	}
+
+	err = godotenv.Load(utils.DerefString(envStr))
+	if err != nil {
+		logger.Error().Err(err).Msg("")
+		panic("bad mailer env")
+	}
+
+	//in memory
+	tokenStorage, err := token.CreateTokenService(os.Getenv("TOKENSECRET"))
+	if err != nil {
+		logger.Error().Err(err).Msg("")
+	}
 	tStore = tokenStorage
 
-	//	err = godotenv.Load("../../testdata/.env")
-	//	if err != nil {
-	//		panic("bad mailer env")
-	//	}
 	//protect from nil pointer
 	address := utils.DerefString(addr)
 

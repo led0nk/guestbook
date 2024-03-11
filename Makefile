@@ -1,7 +1,7 @@
 build:
 	go build -o bin/main cmd/server/main.go
 
-run: 
+run: fmt build 
 	./bin/main
 
 fmt:

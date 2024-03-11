@@ -21,41 +21,65 @@ func TestValidateUserInput(t *testing.T) {
 		{
 			name: "Valid input",
 			input: url.Values{"firstname": {"John"}, "lastname": {"Doe"},
-				"password": {"password123", "password123"}, "email": {"john@doe.com"}},
+				"password": {"password123", "password123"},
+				"email":    {"john@doe.com"}},
 			expected: nil,
 		},
 		{
-			name:     "Empty field",
-			input:    url.Values{"firstname": {""}, "lastname": {"Doe"}, "password": {"password123", "password123"}},
+			name: "Empty field",
+			input: url.Values{"firstname": {""}, "lastname": {"Doe"},
+				"password": {"password123", "password123"},
+				"email":    {"john@doe.com"}},
 			expected: errors.New("fields cannot be empty"),
 		},
 		{
-			name:     "Number in firstname",
-			input:    url.Values{"firstname": {"John1"}, "lastname": {"Doe"}, "password": {"password123", "password123"}},
+			name: "Number in firstname",
+			input: url.Values{"firstname": {"John1"}, "lastname": {"Doe"},
+				"password": {"password123", "password123"},
+				"email":    {"john@doe.com"}},
 			expected: errors.New("no numbers allowed"),
 		},
 		{
-			name:     "Mismatched password",
-			input:    url.Values{"firstname": {"John"}, "lastname": {"Doe"}, "password": {"password123", "password456"}},
+			name: "Mismatched password",
+			input: url.Values{"firstname": {"John"}, "lastname": {"Doe"},
+				"password": {"password123", "password456"},
+				"email":    {"john@doe.com"}},
 			expected: errors.New("password doesn't match, please try again"),
 		},
 		{
-			name:     "Long password",
-			input:    url.Values{"firstname": {"John"}, "lastname": {"Doe"}, "password": {"averylongpasswordthatexceedsseventytwocharactersandistoolongforthistestcase", "averylongpasswordthatexceedsseventytwocharactersandistoolongforthistestcase"}, "email": {"john@doe.com"}},
+			name: "Long password",
+			input: url.Values{"firstname": {"John"}, "lastname": {"Doe"},
+				"password": {"averylongpasswordthatexceedsseventytwocharactersandistoolongforthistestcase", "averylongpasswordthatexceedsseventytwocharactersandistoolongforthistestcase"},
+				"email":    {"john@doe.com"}},
 			expected: errors.New("password is too long, only 72 characters allowed"),
 		},
 		{
-			name:     "Short password",
-			input:    url.Values{"firstname": {"John"}, "lastname": {"Doe"}, "password": {"short", "short"}},
+			name: "Short password",
+			input: url.Values{"firstname": {"John"}, "lastname": {"Doe"},
+				"password": {"short", "short"},
+				"email":    {"john@doe.com"}},
 			expected: errors.New("password is too short, should be at least 8 characters long"),
+		},
+		{
+			name: "Email format",
+			input: url.Values{"firstname": {"John"}, "lastname": {"Doe"},
+				"password": {"password123", "password123"},
+				"email":    {"johndoe.com"}},
+			expected: errors.New("email is not in correct format, please try again"),
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			err := jsondb.ValidateUserInput(test.input)
-			if (err != nil && test.expected == nil) || (err == nil && test.expected != nil) || (err != nil && test.expected != nil && err.Error() != test.expected.Error()) {
-				t.Errorf("Test case %s failed. Expected: %v, Got: %v", test.name, test.expected, err)
+			if (err != nil && test.expected == nil) ||
+				(err == nil && test.expected != nil) ||
+				(err != nil && test.expected != nil &&
+					err.Error() != test.expected.Error()) {
+				t.Errorf("Test case %s failed. Expected: %v, Got: %v",
+					test.name,
+					test.expected,
+					err)
 			}
 		})
 	}
@@ -64,19 +88,19 @@ func TestValidateUserInput(t *testing.T) {
 func TestCreateUser(t *testing.T) {
 	filename := "test_users.json"
 
-	testUser := &model.User{
-		Name:  "Jon Doe",
-		Email: "jon@doe.com",
-	}
+	//testUser := &model.User{
+	//	Name:  "Jon Doe",
+	//	Email: "jon@doe.com",
+	//}
 
-	testUserJSON, err := json.MarshalIndent(testUser, "", " \t")
-	if err != nil {
-		t.Fatalf("Error marshaling user JSON: %v", err)
-	}
-	err = os.WriteFile(filename, testUserJSON, 0644)
-	if err != nil {
-		t.Fatalf("Error writing test user JSON to file: %v", err)
-	}
+	//testUserJSON, err := json.MarshalIndent(testUser, "", " \t")
+	//if err != nil {
+	//	t.Fatalf("Error marshaling user JSON: %v", err)
+	//}
+	//err = os.WriteFile(filename, testUserJSON, 0644)
+	//if err != nil {
+	//	t.Fatalf("Error writing test user JSON to file: %v", err)
+	//}
 	defer os.Remove(filename)
 
 	storage, err := jsondb.CreateUserStorage(filename)

@@ -100,18 +100,14 @@ func (s *Server) ServeHTTP() {
 // hands over Entries to Handler and prints them out in template
 func (s *Server) handlePage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//TODO for Search
-		searchName := r.URL.Query().Get("q")
-		var entries []*model.GuestbookEntry
-		if searchName != "" {
-			entries, _ = s.bookstore.GetEntryByName(searchName)
-		} else {
-			entries, _ = s.bookstore.ListEntries()
-		}
 
-		err := s.templates.TmplHome.Execute(w, &entries)
+		entries, err := s.bookstore.ListEntries()
 		if err != nil {
-			s.log.Error().Err(errors.New("template")).Msg("")
+			s.log.Error().Err(errors.New("entry")).Msg(err.Error())
+		}
+		err = s.templates.TmplHome.Execute(w, &entries)
+		if err != nil {
+			s.log.Error().Err(errors.New("template")).Msg(err.Error())
 			return
 		}
 

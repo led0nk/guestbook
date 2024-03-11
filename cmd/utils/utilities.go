@@ -21,20 +21,22 @@ func DerefString(s *string) string {
 }
 
 // TODO
-func CheckFlag(flag *string, log zerolog.Logger, storage any) any {
-	path, err := url.Parse(*flag)
+func CheckFlag(flag *string, logger zerolog.Logger, storagefunc func(string) (*struct{}, error)) interface{} {
+	var rStore interface{}
+	u, err := url.Parse(*flag)
 	if err != nil {
 		panic(err)
 	}
-	log.Info().Msg(path.String())
-	switch path.Scheme {
+	logger.Info().Msg(u.String())
+	switch u.Scheme {
 	case "file":
-		log.Info().Str("opening: ", path.Host+path.Path).Msg("")
-
+		logger.Info().Str("opening: ", u.Host+u.Path).Msg("")
+		storage, _ := storagefunc(u.Host + u.Path)
+		rStore = storage
 	default:
-
+		panic("bad storage")
 	}
-	return nil
+	return rStore
 }
 
 // Create a Random String e.g. for Verification Code
