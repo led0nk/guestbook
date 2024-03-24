@@ -5,6 +5,7 @@ import (
 	"github.com/led0nk/guestbook/internal/model"
 )
 
+// interface for Mailerservice for Verification-Mail and Reset-PW-Mail
 type Mailerservice interface {
 	SendVerMail(*model.User, *templates.TemplateHandler) error
 	SendPWMail(*model.User, *templates.TemplateHandler) error
