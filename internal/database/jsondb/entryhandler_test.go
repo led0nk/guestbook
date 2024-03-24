@@ -1,7 +1,6 @@
 package jsondb_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/led0nk/guestbook/internal/database/jsondb"
@@ -29,7 +28,7 @@ func TestListEntries(t *testing.T) {
 		},
 	}
 	filename := "test_entries.json"
-	os.Create(filename)
+	//os.Create(filename)
 	//TODO: Implement Write & Read Json-File before Testing / Listing
 
 	storage, err := jsondb.CreateBookStorage(filename)

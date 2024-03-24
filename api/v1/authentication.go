@@ -102,8 +102,12 @@ func (s *Server) logoutAuth() http.HandlerFunc {
 // signup authentication and validation of user input
 func (s *Server) signupAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
-		err := jsondb.ValidateUserInput(r.Form)
+		err := r.ParseForm()
+		if err != nil {
+			s.log.Err(errors.New("request")).Msg(err.Error())
+			return
+		}
+		err = jsondb.ValidateUserInput(r.Form)
 		if err != nil {
 			s.log.Err(errors.New("user")).Msg(err.Error())
 			http.Redirect(w, r, "/signup", http.StatusFound)
@@ -138,7 +142,11 @@ func (s *Server) signupAuth() http.HandlerFunc {
 
 func (s *Server) verifyAuth() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
+		err := r.ParseForm()
+		if err != nil {
+			s.log.Err(errors.New("request")).Msg(err.Error())
+			return
+		}
 		session, _ := r.Cookie("session")
 		userID, err := s.tokenstore.GetTokenValue(session)
 		if err != nil {
@@ -200,7 +208,12 @@ func (s *Server) updateUser() http.HandlerFunc {
 // save updated User data
 func (s *Server) saveUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
+		err := r.ParseForm()
+		if err != nil {
+			s.log.Err(errors.New("request")).Msg(err.Error())
+			return
+		}
+
 		userID, err := uuid.Parse(mux.Vars(r)["ID"])
 		if err != nil {
 			s.log.Err(errors.New("uuid")).Msg(err.Error())

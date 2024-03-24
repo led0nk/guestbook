@@ -172,14 +172,20 @@ func (u *UserStorage) CodeValidation(ID uuid.UUID, code string) (bool, error) {
 		return false, err
 	}
 	if !time.Now().Before(user.ExpirationTime) {
-		u.DeleteUser(ID)
+		err := u.DeleteUser(ID)
+		if err != nil {
+			return false, err
+		}
 		return false, errors.New("Verification Code expired")
 	}
 	if user.VerificationCode != code {
 		return false, errors.New("Wrong Verification Code")
 	}
 	user.IsVerified = true
-	u.UpdateUser(user)
+	err = u.UpdateUser(user)
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 

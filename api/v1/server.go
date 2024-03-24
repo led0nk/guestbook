@@ -204,13 +204,17 @@ func (s *Server) forgotHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) createEntry() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
+		err := r.ParseForm()
+		if err != nil {
+			s.log.Err(errors.New("request")).Msg(err.Error())
+			return
+		}
 		session, _ := r.Cookie("session")
 		userID, _ := s.tokenstore.GetTokenValue(session)
 		user, _ := s.userstore.GetUserByID(userID)
 		newEntry := model.GuestbookEntry{Name: user.Name, Message: html.EscapeString(r.FormValue("message")), UserID: user.ID}
 
-		_, err := s.bookstore.CreateEntry(&newEntry)
+		_, err = s.bookstore.CreateEntry(&newEntry)
 		if err != nil {
 			s.log.Err(errors.New("entry")).Msg(err.Error())
 			return
