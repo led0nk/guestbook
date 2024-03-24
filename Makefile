@@ -9,3 +9,6 @@ fmt:
 
 test: fmt
 	go test -v ./... -failfast
+
+lint:
+	golint ./...
