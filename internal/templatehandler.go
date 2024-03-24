@@ -5,6 +5,7 @@ import (
 	"text/template"
 )
 
+// struct for storing premade Templates
 type TemplateHandler struct {
 	TmplHome          *template.Template
 	TmplSearch        *template.Template
