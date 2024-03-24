@@ -20,8 +20,7 @@ func DerefString(s *string) string {
 	return ""
 }
 
-// TODO
-func CheckFlag(flag *string, logger zerolog.Logger, storagefunc func(string) (*struct{}, error)) interface{} {
+func CheckFlag(flag *string, logger zerolog.Logger, fn func(string) (interface{}, error)) interface{} {
 	var rStore interface{}
 	u, err := url.Parse(*flag)
 	if err != nil {
@@ -30,8 +29,8 @@ func CheckFlag(flag *string, logger zerolog.Logger, storagefunc func(string) (*s
 	logger.Info().Msg(u.String())
 	switch u.Scheme {
 	case "file":
-		logger.Info().Str("opening: ", u.Host+u.Path).Msg("")
-		storage, _ := storagefunc(u.Host + u.Path)
+		logger.Info().Str("opening", u.Host+u.Path).Msg("")
+		storage, _ := fn(u.Host + u.Path)
 		rStore = storage
 	default:
 		panic("bad storage")
