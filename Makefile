@@ -17,3 +17,7 @@ test: fmt
 .PHONY: lint
 lint:
 	golangci-lint run --verbose --timeout=10m ./...
+
+.PHONY: tidy
+	tidy:
+	go mod tidy -v -compat=1.22
