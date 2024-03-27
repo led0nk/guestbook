@@ -53,7 +53,7 @@ jobs:
     needs: go-versions
     strategy:
       matrix:
-        version: ${{ fromJSON(needs.go-versions.outputs) }}
+        version: ${{ fromJSON(needs.go-versions.outputs.version) }}
     steps:
       - uses: actions/checkout@v3
       - name: Install Go
