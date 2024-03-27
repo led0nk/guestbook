@@ -84,7 +84,7 @@ jobs:
           - cmd-1
           - other
     runs-on: ubuntu-latest
-    needs: [setup-environment]
+    needs: go-versions
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
