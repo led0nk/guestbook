@@ -60,7 +60,8 @@ jobs:
       name: Lookup Go versions
       runs-on: ubuntu-latest
       outputs:
-        matrix: ${{ steps.versions.outputs.matrix }}
+        version: ${{ steps.versions.outputs.go-mod-version }}
+        latest: ${{ steps.versions.outputs.latest }}
       steps:
         - uses: actions/checkout@v3
         - uses: arnested/go-version-action@v1
@@ -79,68 +80,13 @@ jobs:
         with:
           go-version: ${{ matrix.version }}
           check-latest: true
-      - name: Go test
-        if: startsWith(matrix.version, '1.18')
+      - name: Go test 1.21
+        if: ${{ fromJSON(needs.go-versions.outputs.version) }} == '1.21'
+        run: go test -v -race -cover -covermode=atomic -coverprofile=coverage.txt ./...
+      - name: Go test 1.22
+        if: ${{ fromJSON(needs.go-versions.outputs.latest) }} == '1.22'
         run: go test -v -race -cover -covermode=atomic -coverprofile=coverage.txt ./...
 
-  unittest-matrix:
-    strategy:
-      matrix:
-        go-version: ["1.22.0", "1.21.8"] # 1.20 is interpreted as 1.2 without quotes
-        group:
-          - receiver-0
-          - receiver-1
-          - receiver-2
-          - receiver-3
-          - processor
-          - exporter-0
-          - exporter-1
-          - extension
-          - connector
-          - internal
-          - pkg
-          - cmd-0
-          - cmd-1
-          - other
-    runs-on: ubuntu-latest
-    needs: go-versions
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ matrix.go-version }}
-          cache: false
-      - name: Cache Go
-        id: go-cache
-        timeout-minutes: 5
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/go/bin
-            ~/go/pkg/mod
-          key: go-cache-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
-      - name: Install dependencies
-        if: steps.go-cache.outputs.cache-hit != 'true'
-        run: make -j2 gomoddownload
-      - name: Install Tools
-        if: steps.go-cache.outputs.cache-hit != 'true'
-        run: make install-tools
-      - name: Cache Test Build
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/go-build
-          key: go-test-build-${{ runner.os }}-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
-      - name: Run Unit Tests
-        if:  matrix.go-version != ${{ fromJSON(needs.go-versions.outputs.matrix) }}
-        run: make test GROUP=${{ matrix.group }}
-      - name: Run Unit Tests With Coverage
-        if:  matrix.go-version == ${{ fromJSON(needs.go-versions.outputs.matrix) }}
-        run: make test-with-cover GROUP=${{ matrix.group }}
-      - uses: actions/upload-artifact@v4
-        if: startsWith( matrix.go-version, '1.21' ) # only upload artifact for one version
-        with:
-          name: coverage-artifacts-${{ matrix.go-version }}-${{ matrix.group }}
-          path: ${{ matrix.group }}-coverage.txt
 
 
   build:
