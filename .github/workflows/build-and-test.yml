@@ -63,7 +63,7 @@ jobs:
           check-latest: true
       - name: Go test 1.21
         if: startsWith( matrix.go-version , needs.go-versions.outputs.version ) 
-        run: echo ${{ fromJSON(needs.go-versions.outputs.version)}} 
+        run: echo "test 1.21" 
       - name: Go test 1.22
         if: startsWith( matrix.go-version , needs.go-versions.outputs.latest ) 
         run: echo "test 1.22" 
