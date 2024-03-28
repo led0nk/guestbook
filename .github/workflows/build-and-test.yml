@@ -62,10 +62,10 @@ jobs:
           go-version: 1.22 
           check-latest: true
       - name: Go test 1.21
-        if: contains( matrix.go-version , needs.go-versions.outputs.version ) 
+        if: startsWith( matrix.go-version , needs.go-versions.outputs.version ) 
         run: echo "test 1.21" 
       - name: Go test 1.22
-        if: contains( matrix.go-version , needs.go-versions.outputs.latest ) 
+        if: startsWith( matrix.go-version , needs.go-versions.outputs.latest ) 
         run: echo "test 1.22" 
 
 
