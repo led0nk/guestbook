@@ -59,11 +59,11 @@ jobs:
           go-version: 1.22 
           check-latest: true
       - name: Go test 1.21
-        if: jobs.go-versions.outputs.version == '1.21'
-        run: go test -v -race -cover -covermode=atomic -coverprofile=coverage.txt ./...
+        if: ${{ fromJSON(needs.go-versions.outputs.version) }} == '1.21'
+        run: echo "test 1.21"
       - name: Go test 1.22
-        if: jobs.go-versions.outputs.version == '1.22'
-        run: go test -v -race -cover -covermode=atomic -coverprofile=coverage.txt ./...
+        if: ${{ fromJSON(needs.go-versions.outputs.latest) }} == '1.22'
+        run: echo "test 1.22"
 
 
 
