@@ -61,7 +61,7 @@ jobs:
           go-version: 1.22 
           check-latest: true
       - name: Go test 1.21
-        if: ${{ fromJSON(needs.go-versions.outputs.version) }} == 1.21
+        if: $VERSION == 1.21
         run: echo ${{ fromJSON(needs.go-versions.outputs.version)}} 
       - name: Go test 1.22
         if: ${{ fromJSON(needs.go-versions.outputs.latest) }} == 1.22
