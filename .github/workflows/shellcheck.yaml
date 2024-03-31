@@ -8,15 +8,19 @@ permissions: {}
 
 jobs:
   shellcheck:
-    name: Shellcheck
+    name: Shellcheck Workflow-Scripts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Run ShellCheck
+      - name: ShellCheck Workflow-Scripts
         uses: ludeeus/action-shellcheck@master
         env:
           SHELLCHECK_OPTS: -x -e SC2059 -e SC2086
         with:
-          scandir: |
-                    '.github/workflows/scripts' 
-                    './script'
+          scandir: '.github/workflows/scripts' 
+      - name: ShellCheck Buildscripts
+        uses: ludeeus/action-shellcheck@master
+        env:
+          SHELLCHECK_OPTS: -x -e SC2059 -e SC2086
+        with:
+          scandir: './script' 
