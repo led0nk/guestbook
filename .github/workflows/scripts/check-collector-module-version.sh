@@ -7,4 +7,4 @@
 # verifies if the collector components are using the main core collector version
 # as a dependency.
 #
-echo $BETA_modules
+echo "test"
