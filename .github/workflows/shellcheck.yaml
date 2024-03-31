@@ -17,4 +17,5 @@ jobs:
         env:
           SHELLCHECK_OPTS: -x -e SC2059 -e SC2086
         with:
-          scandir: '.github/workflows/scripts'
+          scandir: '.github/workflows/scripts' 
+          scandir: './script'
