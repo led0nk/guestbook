@@ -12,6 +12,7 @@ if [[ -z "${ISSUE:-}" || -z "${COMMENT:-}" || -z "${SENDER:-}" ]]; then
 	exit 0
 fi
 
+echo $testtest
 CUR_DIRECTORY=$(dirname "$0")
 
 if [[ ${COMMENT:0:6} != "/label" ]]; then
