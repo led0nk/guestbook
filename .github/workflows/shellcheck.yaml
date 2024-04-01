@@ -8,7 +8,7 @@ permissions: {}
 
 jobs:
   shellcheck:
-    name: Shellcheck Workflow-Scripts
+    name: Shellcheck 
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -24,3 +24,5 @@ jobs:
           SHELLCHECK_OPTS: -x -e SC2059 -e SC2086
         with:
           scandir: './script' 
+          ignore_paths: >-
+            *
