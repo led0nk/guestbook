@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/led0nk/guestbook/internal/model"
@@ -10,7 +11,7 @@ import (
 
 type GuestBookStore interface {
 	CreateEntry(*model.GuestbookEntry) (uuid.UUID, error)
-	ListEntries() ([]*model.GuestbookEntry, error)
+	ListEntries(context.Context) ([]*model.GuestbookEntry, error)
 	DeleteEntry(uuid.UUID) error
 	GetEntryByName(string) ([]*model.GuestbookEntry, error)
 	GetEntryByID(uuid.UUID) ([]*model.GuestbookEntry, error)

@@ -12,7 +12,11 @@ import (
 	"github.com/led0nk/guestbook/internal/middleware"
 	"github.com/led0nk/guestbook/internal/model"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var tracer = otel.GetTracerProvider().Tracer("github.com/led0nk/guestbook/api/v1")
 
 type Server struct {
 	addr       string
@@ -100,8 +104,11 @@ func (s *Server) ServeHTTP() {
 // hands over Entries to Handler and prints them out in template
 func (s *Server) handlePage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		entries, err := s.bookstore.ListEntries()
+		var span trace.Span
+		ctx := r.Context()
+		ctx, span = tracer.Start(ctx, "server.ListEntries")
+		defer span.End()
+		entries, err := s.bookstore.ListEntries(ctx)
 		if err != nil {
 			s.log.Error().Err(errors.New("entry")).Msg(err.Error())
 		}
@@ -116,7 +123,11 @@ func (s *Server) handlePage() http.HandlerFunc {
 
 // searches with livesearch (htmx)
 func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
-	entries, err := s.bookstore.ListEntries()
+	var span trace.Span
+	ctx := r.Context()
+	ctx, span = tracer.Start(ctx, "server.searchHandler")
+	defer span.End()
+	entries, err := s.bookstore.ListEntries(ctx)
 	if err != nil {
 		s.log.Err(errors.New("user")).Msg(err.Error())
 		return

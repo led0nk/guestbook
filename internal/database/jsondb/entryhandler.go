@@ -1,6 +1,7 @@
 package jsondb
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -10,9 +11,13 @@ import (
 	"time"
 
 	"github.com/led0nk/guestbook/internal/model"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/google/uuid"
 )
+
+var tracer = otel.GetTracerProvider().Tracer("github.com/led0nk/guestbook/intern/db/jsondb")
 
 type BookStorage struct {
 	filename string
@@ -53,14 +58,23 @@ func (b *BookStorage) CreateEntry(entry *model.GuestbookEntry) (uuid.UUID, error
 }
 
 // list entries from Storage
-func (b *BookStorage) ListEntries() ([]*model.GuestbookEntry, error) {
+func (b *BookStorage) ListEntries(ctx context.Context) ([]*model.GuestbookEntry, error) {
+	var span trace.Span
+	ctx, span = tracer.Start(ctx, "ListEntries")
+	defer span.End()
+
+	span.AddEvent("Lock")
 	b.mu.Lock()
+	defer span.AddEvent("Unlock")
 	defer b.mu.Unlock()
+
+	span.AddEvent("create list")
 	entrylist := make([]*model.GuestbookEntry, 0, len(b.entries))
 	for _, entry := range b.entries {
 		entrylist = append(entrylist, entry)
 	}
 
+	span.AddEvent("sort list")
 	sort.Slice(entrylist, func(i, j int) bool { return entrylist[i].CreatedAt > entrylist[j].CreatedAt })
 	return entrylist, nil
 

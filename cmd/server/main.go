@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"net/url"
 	"os"
 	"time"
 
@@ -25,10 +27,10 @@ func main() {
 			"localhost:8080",
 			"server port")
 		entryStr = flag.String("entrydata",
-			"file://../../testdata/entries.json",
+			"file://./testdata/entries.json",
 			"link/path to entry-database")
 		userStr = flag.String("userdata",
-			"file://user.json",
+			"file://./testdata/user.json",
 			"link to user-database")
 		envStr = flag.String("envvar's",
 			"testdata/.env",
@@ -38,25 +40,38 @@ func main() {
 		tStore db.TokenStore
 	)
 	flag.Parse()
+	//TODO: bring into func to easily apply flags
+	u, err := url.Parse(utils.DerefString(entryStr))
+	if err != nil {
+		panic(err)
+	}
+	filestring := u.Host + u.Path
 	bStore = utils.CheckFlag(entryStr, logger,
 		func(string) (interface{}, error) {
-			result, err := jsondb.CreateBookStorage(utils.DerefString(entryStr))
+			result, err := jsondb.CreateBookStorage(filestring)
 			if err != nil {
+				fmt.Println(filestring)
 				panic(err)
 			}
 			return result, nil
 		}).(*jsondb.BookStorage)
 
+	//TODO: bring into func to easily apply flags
+	u, err = url.Parse(utils.DerefString(userStr))
+	if err != nil {
+		panic(err)
+	}
+	filestring = u.Host + u.Path
 	uStore = utils.CheckFlag(entryStr, logger,
 		func(string) (interface{}, error) {
-			result, err := jsondb.CreateUserStorage(utils.DerefString(userStr))
+			result, err := jsondb.CreateUserStorage(filestring)
 			if err != nil {
 				panic(err)
 			}
 			return result, nil
 		}).(*jsondb.UserStorage)
 
-	err := godotenv.Load(utils.DerefString(envStr))
+	err = godotenv.Load(utils.DerefString(envStr))
 	if err != nil {
 		logger.Error().Err(err).Msg("")
 		panic("bad mailer env")
