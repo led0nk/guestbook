@@ -18,7 +18,7 @@ if [[ ${COMMENT:0:6} != "/label" ]]; then
 	echo "Comment is not a label comment, exiting."
 	exit 0
 fi
-
+echo $testbla
 declare -A COMMON_LABELS
 COMMON_LABELS["good-first-issue"]="good first issue"
 COMMON_LABELS["help-wanted"]="help wanted"
