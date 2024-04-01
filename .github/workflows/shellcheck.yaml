@@ -23,4 +23,6 @@ jobs:
         env:
           SHELLCHECK_OPTS: -x -e SC2059 -e SC2086
         with:
-          scandir: './script/*.sh' 
+          scandir: './script' 
+          ignore_paths: >-
+            script/* 
