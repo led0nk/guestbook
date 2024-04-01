@@ -24,5 +24,3 @@ jobs:
           SHELLCHECK_OPTS: -x -e SC2059 -e SC2086
         with:
           scandir: './script' 
-          ignore_paths: >-
-            *
