@@ -25,4 +25,4 @@ jobs:
         with:
           scandir: './script' 
           ignore_paths: >-
-            *
+            /*
