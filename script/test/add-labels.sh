@@ -18,7 +18,6 @@ if [[ ${COMMENT:0:6} != "/label" ]]; then
 	echo "Comment is not a label comment, exiting."
 	exit 0
 fi
-echo $blabla
 declare -A COMMON_LABELS
 COMMON_LABELS["good-first-issue"]="good first issue"
 COMMON_LABELS["help-wanted"]="help wanted"
@@ -26,7 +25,7 @@ COMMON_LABELS["needs-discussion"]="needs discussion"
 COMMON_LABELS["needs-triage"]="needs triage"
 COMMON_LABELS["waiting-for-author"]="waiting for author"
 
-LABELS=$(echo ${COMMENT} | sed -E 's%^/label%%')
+LABELS=$(echo "${COMMENT}" | sed -E 's%^/label%%')
 
 for LABEL_REQ in ${LABELS}; do
 	LABEL=$(echo "${LABEL_REQ}" | sed -E s/^[+-]?//)
