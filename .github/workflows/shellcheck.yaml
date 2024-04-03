@@ -15,12 +15,12 @@ jobs:
       - name: ShellCheck Workflow-Scripts
         uses: ludeeus/action-shellcheck@master
         env:
-          SHELLCHECK_OPTS: -x -e SC2059 -e SC2086 *.sh
+          SHELLCHECK_OPTS: -x -e SC2059 -e SC2086
         with:
           scandir: '.github/workflows/scripts' 
       - name: ShellCheck Buildscripts
         uses: ludeeus/action-shellcheck@master
         env:
-          SHELLCHECK_OPTS: -x -e SC2059 -e SC2086 *.sh
+          SHELLCHECK_OPTS: -x -e SC2059 -e SC2086 
         with:
           scandir: './script/test' 
