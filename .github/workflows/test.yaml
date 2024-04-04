@@ -1,0 +1,12 @@
+name: Trigger
+on:
+  workflow_run:
+    workflows: ["build-and-test"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+  steps:
+    - uses: actions/checkout@v4
+      run: echo "test"
