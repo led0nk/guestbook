@@ -1,14 +1,14 @@
 name: shellcheck
 on:
-  push:
-    branches:
-      - main 
-  pull_request:
+  workflow_run:
+    workflows:
+      - Trigger
+    types:
+      - completed
 permissions: {}
-
 jobs:
   shellcheck:
-    name: Shellcheck 
+    name: Shellcheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -17,10 +17,10 @@ jobs:
         env:
           SHELLCHECK_OPTS: -x -e SC2059 -e SC2086
         with:
-          scandir: '.github/workflows/scripts' 
+          scandir: '.github/workflows/scripts'
       - name: ShellCheck Buildscripts
         uses: ludeeus/action-shellcheck@master
         env:
-          SHELLCHECK_OPTS: -x -e SC2059 -e SC2086 
+          SHELLCHECK_OPTS: -x -e SC2059 -e SC2086
         with:
-          scandir: './script/test' 
+          scandir: './script/test'
