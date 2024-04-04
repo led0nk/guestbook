@@ -69,10 +69,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, test]
     steps:
+      - name: Check out code
+        uses: actions/checkout@v4
       - name: Set up Go
         uses: actions/setup-go@v5
         with: go-version:${{ fromJSON(needs.go-versions.outputs.version) }}
-      - name: Check out code
-        uses: actions/checkout@v5
       - name: Build
         run: make build
