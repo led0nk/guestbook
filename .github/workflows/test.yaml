@@ -1,10 +1,9 @@
 name: Trigger
 on:
   workflow_run:
-    workflows: ["build-and-test"]
+    workflows: ["Build and Test"]
     types:
       - completed
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
