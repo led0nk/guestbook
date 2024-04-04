@@ -9,4 +9,5 @@ jobs:
   deploy:
   steps:
     - uses: actions/checkout@v4
+    - name: test
       run: echo "test"
