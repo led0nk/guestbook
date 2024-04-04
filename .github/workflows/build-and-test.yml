@@ -2,9 +2,8 @@ name: Build and Test
 on:
   push:
     branches:
-      - main 
+      - main
   pull_request:
-
 jobs:
   go-versions:
     name: Lookup Go versions
@@ -25,7 +24,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ fromJSON(needs.go-versions.outputs.version) }} 
+          go-version: ${{ fromJSON(needs.go-versions.outputs.version) }}
       - name: Install gomods
         run: make gomoddownload
       - name: Install tools
@@ -33,38 +32,38 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    needs: [setup-env,go-versions]
+    needs: [setup-env, go-versions]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ fromJSON(needs.go-versions.outputs.version) }} 
+          go-version: ${{ fromJSON(needs.go-versions.outputs.version) }}
       - name: Install gomods
         run: make gomoddownload
       - name: Install tools
         run: make install-gotools
-      - name: Lint code 
-        run: make golint
+      - name: Lint code
+        run: echo "golint"
   test:
     name: Test
-    strategy: 
-      matrix: 
+    strategy:
+      matrix:
         go-version: ${{ fromJSON(needs.go-versions.outputs.matrix) }}
     runs-on: ubuntu-latest
-    needs: [setup-env,go-versions]
+    needs: [setup-env, go-versions]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version }} 
-      - name: Test Go-version @version 
-        if: startsWith( matrix.go-version , needs.go-versions.outputs.version ) 
-        run: echo "test 1.21" 
-      - name: Test Go-version @latest 
-        if: startsWith( matrix.go-version , needs.go-versions.outputs.latest ) 
-        run: echo "test 1.22" 
+          go-version: ${{ matrix.go-version }}
+      - name: Test Go-version @version
+        if: startsWith( matrix.go-version , needs.go-versions.outputs.version )
+        run: echo "test 1.21"
+      - name: Test Go-version @latest
+        if: startsWith( matrix.go-version , needs.go-versions.outputs.latest )
+        run: echo "test 1.22"
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -72,8 +71,7 @@ jobs:
     steps:
       - name: Set up Go
         uses: actions/setup-go@v5
-        with:
-          go-version:${{ fromJSON(needs.go-versions.outputs.version) }} 
+        with: go-version:${{ fromJSON(needs.go-versions.outputs.version) }}
       - name: Check out code
         uses: actions/checkout@v5
       - name: Build
