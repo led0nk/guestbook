@@ -4,7 +4,7 @@ COPY . /go/src/github.com/led0nk/guestbook
 
 WORKDIR /go/src/github.com/led0nk/guestbook
 
-RUN make build
+RUN CGO_ENABLED=0 go build -o bin/guestbook cmd/server/main.go
 
 FROM scratch
 
