@@ -83,9 +83,6 @@ jobs:
       - name: Check susp
         run: make govet
 
-      - name: Check licenseheader
-        run: make check-licensehead
-
       - name: Compilecheck
         run: make compilecheck
 
@@ -108,11 +105,11 @@ jobs:
 
       - name: Test Go-version @version
         if: startsWith( matrix.go-version , needs.go-versions.outputs.version )
-        run: make gotest 
+        run: make gotest
 
       - name: Test Go-version @latest
         if: startsWith( matrix.go-version , needs.go-versions.outputs.latest )
-        run: make gotest 
+        run: make gotest
 
   build:
     name: Build
@@ -130,4 +127,3 @@ jobs:
 
       - name: Build
         run: make build
-

@@ -16,6 +16,10 @@ gofmt:
 govet:
 	go vet ./...
 
+.PHONY: compilecheck
+compilecheck:
+	$(GO_ENV)
+	go build -v ./...
 
 .PHONY: gotest
 test: gofmt govet ensure-fmt
