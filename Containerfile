@@ -8,8 +8,8 @@ RUN make build
 
 FROM scratch
 
-COPY --from=0 /guestbook /guestbook
+COPY --from=0 cmd/server/guestbook /guestbook
 
 EXPOSE 8080
 
-CMD ["make run"]
+CMD ["/guestbook"]
