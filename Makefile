@@ -43,7 +43,7 @@ gotidy:
 
 .PHONY: build
 build:
-	go build -o bin/main cmd/server/main.go
+	go build -o bin/guestbook cmd/server/main.go
 
 .PHONY: run
 run: gofmt build 

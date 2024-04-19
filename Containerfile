@@ -8,7 +8,7 @@ RUN make build
 
 FROM scratch
 
-COPY --from=0 cmd/server/guestbook /guestbook
+COPY --from=0 bin/guestbook /guestbook
 
 EXPOSE 8080
 
