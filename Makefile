@@ -1,39 +1,39 @@
-#Set directory paths
-ROOT_DIR=$(shell git rev-parse --show-toplevel)
-TOOLS_DIR=$(ROOT_DIR)/.tools
-
-#Set tool-paths for easier access
-LINT := $(TOOLS_DIR)/golangci-lint
+include ./Makefile.Common
 
 #RULES
 $(TOOLS_DIR):
 	mkdir -p $@
 
+.PHONY: ensure-fmt
 ensure-fmt: fmt
 	@git diff -s --exit-code *.go || (echo "Build failed: a go file is not formated correctly. Run 'make fmt' and update your PR." && exit 1)
 
-fmt:
+.PHONY: gofmt
+gofmt:
 	go fmt ./...
 
-vet:
+.PHONY: govet
+govet:
 	go vet ./...
 
-build:
-	CGO_ENABLED=0 go build -v ./...
 
-test: fmt vet ensure-fmt
+.PHONY: gotest
+test: gofmt govet ensure-fmt
 	CGO_ENABLED=0 go test -v ./... -failfast
 
+.PHONY: gomoddownload
 gomoddownload:
 	go mod download -x
 
+.PHONY: install-gotools
 install-gotools: $(TOOLS_DIR)
-	#install golangci-lint v1.57.2 (only for workflow)
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(TOOLS_DIR) v1.57.2 
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(TOOLS_DIR) $(GOLINT_VERSION) 
 
+.PHONY: golint
 golint:
 	$(LINT) run --verbose --allow-parallel-runners --timeout=10m 
 
+.PHONY: gotidy
 gotidy:
 	go mod tidy -compat=1.21
 
@@ -42,5 +42,6 @@ build:
 	go build -o bin/main cmd/server/main.go
 
 .PHONY: run
-run: fmt build 
+run: gofmt build 
 	./bin/main 
+
