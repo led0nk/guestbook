@@ -4,7 +4,7 @@ include ./Makefile.Common
 $(TOOLS_DIR):
 	mkdir -p $@
 
-.PHONY: ensure-fmt
+.PHONY: check-fmt
 ensure-fmt: fmt
 	@git diff -s --exit-code *.go || (echo "Build failed: a go file is not formated correctly. Run 'make fmt' and update your PR." && exit 1)
 

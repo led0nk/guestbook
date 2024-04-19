@@ -60,7 +60,7 @@ func (b *BookStorage) CreateEntry(entry *model.GuestbookEntry) (uuid.UUID, error
 // list entries from Storage
 func (b *BookStorage) ListEntries(ctx context.Context) ([]*model.GuestbookEntry, error) {
 	var span trace.Span
-	ctx, span = tracer.Start(ctx, "ListEntries")
+	_, span = tracer.Start(ctx, "ListEntries")
 	defer span.End()
 
 	span.AddEvent("Lock")
