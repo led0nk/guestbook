@@ -1,6 +1,7 @@
 package jsondb
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/mail"
@@ -14,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/led0nk/guestbook/cmd/utils"
 	"github.com/led0nk/guestbook/internal/model"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type UserStorage struct {
@@ -50,6 +52,7 @@ func (u *UserStorage) writeUserJSON() error {
 
 // read JSON data from file = filename
 func (u *UserStorage) readUserJSON() error {
+
 	if _, err := os.Stat(u.filename); os.IsNotExist(err) {
 		return errors.New("file does not exist")
 	}
@@ -60,8 +63,14 @@ func (u *UserStorage) readUserJSON() error {
 	return json.Unmarshal(data, &u.user)
 }
 
-func (u *UserStorage) CreateUser(user *model.User) (uuid.UUID, error) {
+func (u *UserStorage) CreateUser(ctx context.Context, user *model.User) (uuid.UUID, error) {
+	var span trace.Span
+	_, span = tracer.Start(ctx, "CreateUser")
+	defer span.End()
+
+	span.AddEvent("Lock")
 	u.mu.Lock()
+	defer span.AddEvent("Unlock")
 	defer u.mu.Unlock()
 	if user.ID == uuid.Nil {
 		user.ID = uuid.New()
@@ -75,9 +84,16 @@ func (u *UserStorage) CreateUser(user *model.User) (uuid.UUID, error) {
 	return user.ID, nil
 }
 
-func (u *UserStorage) ListUser() ([]*model.User, error) {
+func (u *UserStorage) ListUser(ctx context.Context) ([]*model.User, error) {
+	var span trace.Span
+	_, span = tracer.Start(ctx, "ListUser")
+	defer span.End()
+
+	span.AddEvent("Lock")
 	u.mu.Lock()
+	defer span.AddEvent("Unlock")
 	defer u.mu.Unlock()
+
 	userlist := make([]*model.User, 0, len(u.user))
 	for _, user := range u.user {
 		userlist = append(userlist, user)
@@ -87,8 +103,14 @@ func (u *UserStorage) ListUser() ([]*model.User, error) {
 }
 
 // maybe only for expired ExpTime and Reverification
-func (u *UserStorage) CreateVerificationCode(userID uuid.UUID) error {
+func (u *UserStorage) CreateVerificationCode(ctx context.Context, userID uuid.UUID) error {
+	var span trace.Span
+	_, span = tracer.Start(ctx, "CreateVerificationCode")
+	defer span.End()
+
+	span.AddEvent("Lock")
 	u.mu.Lock()
+	defer span.AddEvent("Unlock")
 	defer u.mu.Unlock()
 
 	if userID == uuid.Nil {
@@ -99,8 +121,14 @@ func (u *UserStorage) CreateVerificationCode(userID uuid.UUID) error {
 	return nil
 }
 
-func (u *UserStorage) UpdateUser(user *model.User) error {
+func (u *UserStorage) UpdateUser(ctx context.Context, user *model.User) error {
+	var span trace.Span
+	_, span = tracer.Start(ctx, "UpdateUser")
+	defer span.End()
+
+	span.AddEvent("Lock")
 	u.mu.Lock()
+	defer span.AddEvent("Unlock")
 	defer u.mu.Unlock()
 
 	u.user[user.ID] = user
@@ -110,14 +138,21 @@ func (u *UserStorage) UpdateUser(user *model.User) error {
 	return nil
 }
 
-func (u *UserStorage) GetUserByEmail(email string) (*model.User, error) {
+func (u *UserStorage) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
+	var span trace.Span
+	_, span = tracer.Start(ctx, "GetUserByEmail")
+	defer span.End()
+
+	span.AddEvent("Lock")
 	u.mu.Lock()
+	defer span.AddEvent("Unlock")
 	defer u.mu.Unlock()
 	if email == "" {
 		return nil, errors.New("requires an email input")
 	}
 
 	users := &model.User{}
+	span.AddEvent("range over user")
 	for _, user := range u.user {
 		if user.Email == email {
 			users = user
@@ -126,13 +161,20 @@ func (u *UserStorage) GetUserByEmail(email string) (*model.User, error) {
 	return users, nil
 }
 
-func (u *UserStorage) GetUserByID(ID uuid.UUID) (*model.User, error) {
+func (u *UserStorage) GetUserByID(ctx context.Context, ID uuid.UUID) (*model.User, error) {
+	var span trace.Span
+	_, span = tracer.Start(ctx, "GetUserByID")
+	defer span.End()
+
+	span.AddEvent("Lock")
 	u.mu.Lock()
+	defer span.AddEvent("Unlock")
 	defer u.mu.Unlock()
 	if ID == uuid.Nil {
 		return nil, errors.New("UUID empty")
 	}
 	users := &model.User{}
+	span.AddEvent("range over user")
 	for _, user := range u.user {
 		if user.ID == ID {
 			users = user
@@ -166,13 +208,18 @@ func ValidateUserInput(v url.Values) error {
 	return nil
 }
 
-func (u *UserStorage) CodeValidation(ID uuid.UUID, code string) (bool, error) {
-	user, err := u.GetUserByID(ID)
+func (u *UserStorage) CodeValidation(ctx context.Context, ID uuid.UUID, code string) (bool, error) {
+	var span trace.Span
+	ctx, span = tracer.Start(ctx, "CodeValidation")
+	defer span.End()
+
+	span.AddEvent("get user")
+	user, err := u.GetUserByID(ctx, ID)
 	if err != nil {
 		return false, err
 	}
 	if !time.Now().Before(user.ExpirationTime) {
-		err := u.DeleteUser(ID)
+		err := u.DeleteUser(ctx, ID)
 		if err != nil {
 			return false, err
 		}
@@ -182,7 +229,8 @@ func (u *UserStorage) CodeValidation(ID uuid.UUID, code string) (bool, error) {
 		return false, errors.New("Wrong Verification Code")
 	}
 	user.IsVerified = true
-	err = u.UpdateUser(user)
+	span.AddEvent("update user")
+	err = u.UpdateUser(ctx, user)
 	if err != nil {
 		return false, err
 	}
@@ -190,8 +238,14 @@ func (u *UserStorage) CodeValidation(ID uuid.UUID, code string) (bool, error) {
 }
 
 // delete Entry from storage and write to JSON
-func (u *UserStorage) DeleteUser(ID uuid.UUID) error {
+func (u *UserStorage) DeleteUser(ctx context.Context, ID uuid.UUID) error {
+	var span trace.Span
+	_, span = tracer.Start(ctx, "DeleteUser")
+	defer span.End()
+
+	span.AddEvent("Lock")
 	u.mu.Lock()
+	defer span.AddEvent("Unlock")
 	defer u.mu.Unlock()
 	if ID == uuid.Nil {
 		return errors.New("requires an userID")
@@ -203,6 +257,7 @@ func (u *UserStorage) DeleteUser(ID uuid.UUID) error {
 
 	delete(u.user, ID)
 
+	span.AddEvent("delete user from json")
 	if err := u.writeUserJSON(); err != nil {
 		return err
 	}

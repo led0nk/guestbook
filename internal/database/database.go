@@ -10,29 +10,29 @@ import (
 )
 
 type GuestBookStore interface {
-	CreateEntry(*model.GuestbookEntry) (uuid.UUID, error)
+	CreateEntry(context.Context, *model.GuestbookEntry) (uuid.UUID, error)
 	ListEntries(context.Context) ([]*model.GuestbookEntry, error)
-	DeleteEntry(uuid.UUID) error
-	GetEntryByName(string) ([]*model.GuestbookEntry, error)
-	GetEntryByID(uuid.UUID) ([]*model.GuestbookEntry, error)
-	GetEntryBySnippet(string) ([]*model.GuestbookEntry, error)
+	DeleteEntry(context.Context, uuid.UUID) error
+	GetEntryByName(context.Context, string) ([]*model.GuestbookEntry, error)
+	GetEntryByID(context.Context, uuid.UUID) ([]*model.GuestbookEntry, error)
+	GetEntryBySnippet(context.Context, string) ([]*model.GuestbookEntry, error)
 }
 
 type UserStore interface {
-	CreateUser(*model.User) (uuid.UUID, error)
-	GetUserByEmail(string) (*model.User, error)
-	GetUserByID(uuid.UUID) (*model.User, error)
-	UpdateUser(*model.User) error
-	CreateVerificationCode(uuid.UUID) error
-	CodeValidation(uuid.UUID, string) (bool, error)
-	ListUser() ([]*model.User, error)
-	DeleteUser(uuid.UUID) error
+	CreateUser(context.Context, *model.User) (uuid.UUID, error)
+	GetUserByEmail(context.Context, string) (*model.User, error)
+	GetUserByID(context.Context, uuid.UUID) (*model.User, error)
+	UpdateUser(context.Context, *model.User) error
+	CreateVerificationCode(context.Context, uuid.UUID) error
+	CodeValidation(context.Context, uuid.UUID, string) (bool, error)
+	ListUser(context.Context) ([]*model.User, error)
+	DeleteUser(context.Context, uuid.UUID) error
 }
 
 type TokenStore interface {
-	CreateToken(string, uuid.UUID, bool) (*http.Cookie, error)
-	DeleteToken(uuid.UUID) error
-	GetTokenValue(*http.Cookie) (uuid.UUID, error)
-	Valid(string) (bool, error)
-	Refresh(string) (*http.Cookie, error)
+	CreateToken(context.Context, string, uuid.UUID, bool) (*http.Cookie, error)
+	DeleteToken(context.Context, uuid.UUID) error
+	GetTokenValue(context.Context, *http.Cookie) (uuid.UUID, error)
+	Valid(context.Context, string) (bool, error)
+	Refresh(context.Context, string) (*http.Cookie, error)
 }

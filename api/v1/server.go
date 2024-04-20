@@ -12,7 +12,9 @@ import (
 	"github.com/led0nk/guestbook/internal/middleware"
 	"github.com/led0nk/guestbook/internal/model"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -57,6 +59,7 @@ func (s *Server) ServeHTTP() {
 	authMiddleware.Use(middleware.Auth(s.tokenstore, s.log))
 	adminMiddleware.Use(middleware.AdminAuth(s.tokenstore, s.userstore, s.log))
 	router.Use(middleware.Logger(s.log))
+	router.Use(otelmux.Middleware("guestbook"))
 	router.PathPrefix("/user").Handler(authMiddleware)
 	router.PathPrefix("/admin").Handler(adminMiddleware)
 	// routing
@@ -87,9 +90,9 @@ func (s *Server) ServeHTTP() {
 	adminMiddleware.HandleFunc("/dashboard/{ID}", s.saveUser()).Methods(http.MethodPut)
 	adminMiddleware.HandleFunc("/dashboard/{ID}/verify", s.resendVer()).Methods(http.MethodPut)
 	adminMiddleware.HandleFunc("/dashboard/{ID}/password-reset", s.passwordReset()).Methods(http.MethodPut)
-	// log.Info("listening to: ")
+	//TODO: implement in main log.Info("listening to: ")
 
-	s.log.Info().Str("listening to", "").Msg("")
+	s.log.Info().Str("listening to", s.addr).Msg("")
 
 	srv := &http.Server{
 		Addr:    s.addr,
@@ -108,12 +111,17 @@ func (s *Server) handlePage() http.HandlerFunc {
 		ctx := r.Context()
 		ctx, span = tracer.Start(ctx, "server.ListEntries")
 		defer span.End()
+
 		entries, err := s.bookstore.ListEntries(ctx)
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			s.log.Error().Err(errors.New("entry")).Msg(err.Error())
 		}
 		err = s.templates.TmplHome.Execute(w, &entries)
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			s.log.Error().Err(errors.New("template")).Msg(err.Error())
 			return
 		}
@@ -127,13 +135,18 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	ctx, span = tracer.Start(ctx, "server.searchHandler")
 	defer span.End()
+
 	entries, err := s.bookstore.ListEntries(ctx)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		s.log.Err(errors.New("user")).Msg(err.Error())
 		return
 	}
 	err = s.templates.TmplSearch.Execute(w, entries)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		s.log.Err(errors.New("template")).Msg(err.Error())
 		return
 	}
@@ -141,8 +154,15 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 
 // show login Form
 func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
+	var span trace.Span
+	ctx := r.Context()
+	_, span = tracer.Start(ctx, "server.loginHandler")
+	defer span.End()
+
 	err := s.templates.TmplLogin.Execute(w, nil)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
 		s.log.Err(errors.New("template")).Msg(err.Error())
 		return
@@ -151,8 +171,15 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 // show signup Form
 func (s *Server) signupHandler(w http.ResponseWriter, r *http.Request) {
+	var span trace.Span
+	ctx := r.Context()
+	_, span = tracer.Start(ctx, "server.signupHandler")
+	defer span.End()
+
 	err := s.templates.TmplSignUp.Execute(w, nil)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
 		s.log.Err(errors.New("template")).Msg(err.Error())
 		return
@@ -161,13 +188,48 @@ func (s *Server) signupHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) dashboardHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		session, _ := r.Cookie("session")
-		tokenValue, _ := s.tokenstore.GetTokenValue(session)
-		user, _ := s.userstore.GetUserByID(tokenValue)
-		user.Entry, _ = s.bookstore.GetEntryByID(tokenValue)
+		var span trace.Span
+		ctx := r.Context()
+		ctx, span = tracer.Start(ctx, "server.dashboardHandler")
+		defer span.End()
 
-		err := s.templates.TmplDashboard.Execute(w, user)
+		session, err := r.Cookie("session")
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			w.WriteHeader(http.StatusBadGateway)
+			s.log.Err(errors.New("cookie")).Msg(err.Error())
+			return
+		}
+		tokenValue, err := s.tokenstore.GetTokenValue(ctx, session)
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			w.WriteHeader(http.StatusBadGateway)
+			s.log.Err(errors.New("token")).Msg(err.Error())
+			return
+		}
+		user, err := s.userstore.GetUserByID(ctx, tokenValue)
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			w.WriteHeader(http.StatusBadGateway)
+			s.log.Err(errors.New("user")).Msg(err.Error())
+			return
+		}
+		user.Entry, err = s.bookstore.GetEntryByID(ctx, tokenValue)
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			w.WriteHeader(http.StatusBadGateway)
+			s.log.Err(errors.New("entry")).Msg(err.Error())
+			return
+		}
+
+		err = s.templates.TmplDashboard.Execute(w, user)
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			w.WriteHeader(http.StatusBadGateway)
 			s.log.Err(errors.New("template")).Msg(err.Error())
 			return
@@ -177,8 +239,15 @@ func (s *Server) dashboardHandler() http.HandlerFunc {
 }
 
 func (s *Server) createHandler(w http.ResponseWriter, r *http.Request) {
+	var span trace.Span
+	ctx := r.Context()
+	_, span = tracer.Start(ctx, "server.createHandler")
+	defer span.End()
+
 	err := s.templates.TmplCreate.Execute(w, nil)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
 		s.log.Err(errors.New("template")).Msg(err.Error())
 		return
@@ -186,8 +255,15 @@ func (s *Server) createHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) verifyHandler(w http.ResponseWriter, r *http.Request) {
+	var span trace.Span
+	ctx := r.Context()
+	_, span = tracer.Start(ctx, "server.verifyHandler")
+	defer span.End()
+
 	err := s.templates.TmplVerification.Execute(w, nil)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
 		s.log.Err(errors.New("template")).Msg(err.Error())
 		return
@@ -195,9 +271,23 @@ func (s *Server) verifyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) adminHandler(w http.ResponseWriter, r *http.Request) {
-	users, _ := s.userstore.ListUser()
-	err := s.templates.TmplAdmin.Execute(w, &users)
+	var span trace.Span
+	ctx := r.Context()
+	ctx, span = tracer.Start(ctx, "server.adminHandler")
+	defer span.End()
+
+	users, err := s.userstore.ListUser(ctx)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		s.log.Err(errors.New("user")).Msg(err.Error())
+		return
+	}
+	err = s.templates.TmplAdmin.Execute(w, &users)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
 		s.log.Err(errors.New("template")).Msg(err.Error())
 		return
@@ -205,8 +295,15 @@ func (s *Server) adminHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) forgotHandler(w http.ResponseWriter, r *http.Request) {
+	var span trace.Span
+	ctx := r.Context()
+	_, span = tracer.Start(ctx, "server.forgotHandler")
+	defer span.End()
+
 	err := s.templates.TmplForgot.Execute(w, nil)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
 		s.log.Err(errors.New("template")).Msg(err.Error())
 		return
@@ -215,18 +312,45 @@ func (s *Server) forgotHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) createEntry() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var span trace.Span
+		ctx := r.Context()
+		ctx, span = tracer.Start(ctx, "server.createEntry")
+		defer span.End()
+
 		err := r.ParseForm()
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			s.log.Err(errors.New("request")).Msg(err.Error())
 			return
 		}
-		session, _ := r.Cookie("session")
-		userID, _ := s.tokenstore.GetTokenValue(session)
-		user, _ := s.userstore.GetUserByID(userID)
+		session, err := r.Cookie("session")
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			s.log.Err(errors.New("cookie")).Msg(err.Error())
+			return
+		}
+		userID, err := s.tokenstore.GetTokenValue(ctx, session)
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			s.log.Err(errors.New("token")).Msg(err.Error())
+			return
+		}
+		user, err := s.userstore.GetUserByID(ctx, userID)
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			s.log.Err(errors.New("user")).Msg(err.Error())
+			return
+		}
 		newEntry := model.GuestbookEntry{Name: user.Name, Message: html.EscapeString(r.FormValue("message")), UserID: user.ID}
 
-		_, err = s.bookstore.CreateEntry(&newEntry)
+		_, err = s.bookstore.CreateEntry(ctx, &newEntry)
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			s.log.Err(errors.New("entry")).Msg(err.Error())
 			return
 		}
@@ -236,18 +360,29 @@ func (s *Server) createEntry() http.HandlerFunc {
 
 func (s *Server) changeUserData() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var span trace.Span
+		ctx := r.Context()
+		ctx, span = tracer.Start(ctx, "server.changeUserData")
+		defer span.End()
+
 		userID, err := uuid.Parse(mux.Vars(r)["ID"])
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			s.log.Err(errors.New("uuid")).Msg(err.Error())
 			return
 		}
-		user, err := s.userstore.GetUserByID(userID)
+		user, err := s.userstore.GetUserByID(ctx, userID)
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			s.log.Err(errors.New("user")).Msg(err.Error())
 			return
 		}
 		err = s.templates.TmplDashboardUser.ExecuteTemplate(w, "user-update", user)
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			s.log.Err(errors.New("template")).Msg(err.Error())
 			return
 		}

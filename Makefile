@@ -49,3 +49,6 @@ build:
 run: gofmt build 
 	./bin/main 
 
+.PHONY: gorun
+gorun: 
+	go run cmd/server/main.go
