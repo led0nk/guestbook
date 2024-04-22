@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net/url"
@@ -16,6 +17,11 @@ import (
 	"github.com/led0nk/guestbook/internal/mailer"
 	"github.com/led0nk/guestbook/token"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -76,6 +82,25 @@ func main() {
 		logger.Error().Err(err).Msg("")
 		panic("bad mailer env")
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	grpcOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock()}
+	conn, err := grpc.NewClient("localhost:4317", grpcOptions...)
+	if err != nil {
+		logger.Error().Err(err).Msg("")
+		os.Exit(1)
+	}
+	defer conn.Close()
+
+	otelexporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
+	if err != nil {
+		logger.Error().Err(err).Msg("")
+		os.Exit(1)
+	}
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(otelexporter))
+	otel.SetTracerProvider(tp)
 
 	//in memory
 	tokenStorage, err := token.CreateTokenService(os.Getenv("TOKENSECRET"))

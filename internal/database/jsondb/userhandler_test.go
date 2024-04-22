@@ -1,6 +1,7 @@
 package jsondb_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/url"
@@ -87,6 +88,7 @@ func TestValidateUserInput(t *testing.T) {
 
 func TestCreateUser(t *testing.T) {
 	filename := "test_users.json"
+	ctx := context.Background()
 
 	//testUser := &model.User{
 	//	Name:  "Jon Doe",
@@ -114,7 +116,7 @@ func TestCreateUser(t *testing.T) {
 	}
 
 	// Create the user
-	id, err := storage.CreateUser(user)
+	id, err := storage.CreateUser(ctx, user)
 	if err != nil {
 		t.Fatalf("Error creating user: %v", err)
 	}
