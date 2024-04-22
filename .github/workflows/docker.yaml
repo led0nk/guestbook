@@ -33,7 +33,7 @@ jobs:
           docker buildx create --use
           docker buildx build --push -f Containerfile \
             --platform linux/amd64,linux/arm64 \
-            -t ghcr.io/"${{ github.repository_owner }}"/guestbook:latest \
+            -t ghcr.io/${{ github.repository_owner }}/guestbook:latest \
             .
           docker buildx stop
 
