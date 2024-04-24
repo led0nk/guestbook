@@ -1,0 +1,48 @@
+version: "3.5"
+services:
+  # Jaeger Tracing for traces
+  jaeger:
+    networks:
+      - backend
+    image: jaegertracing/all-in-one:latest
+    volumes:
+      - "./jaeger-ui.json:/etc/jaeger/jaeger-ui.json:Z"
+    environment:
+      - COLECTOR_OTLP_ENABLED=true
+      - LOG_LEVEL=debug
+      - METRICS_STORAGE_TYPE=prometheus
+      - PROMETHEUS_SERVER_URL=http://prometheus:9090
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "14250:14250"
+    command: --query.ui-config /etc/jaeger/jaeger-ui.json
+
+  otel_collector:
+    networks:
+      - backend
+    image: otel/opentelemetry-collector-contrib:latest
+    volumes:
+      - "./otel-collector-config.yml:/etc/otelcol/otel-collector-config.yml:Z"
+    command: --config /etc/otelcol/otel-collector-config.yml
+    ports:
+      - "14278:14278"
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      - jaeger
+
+  # Prometheus Service for metrics
+  prometheus:
+    networks:
+      - backend
+    image: prom/prometheus
+    ports:
+      - "9090:9090" # Prometheus server
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml:Z"
+    command:
+      - "--enable-feature=otlp-write-receiver"
+      - "--config.file=/etc/prometheus/prometheus.yml"
+
+networks:
+  backend:

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"html"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -11,14 +12,17 @@ import (
 	db "github.com/led0nk/guestbook/internal/database"
 	"github.com/led0nk/guestbook/internal/middleware"
 	"github.com/led0nk/guestbook/internal/model"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 )
 
 var tracer = otel.GetTracerProvider().Tracer("github.com/led0nk/guestbook/api/v1")
+var meter = otel.GetMeterProvider().Meter("github.com/led0nk/guestbook/api/v1")
 
 type Server struct {
 	addr       string
@@ -64,6 +68,8 @@ func (s *Server) ServeHTTP() {
 	router.PathPrefix("/admin").Handler(adminMiddleware)
 	// routing
 	router.HandleFunc("/", s.handlePage()).Methods(http.MethodGet)
+	//NOTE: register /metrics
+	router.Handle("/metrics", promhttp.Handler())
 	// router.HandleFunc("/", s.delete()).Methods(http.MethodPost)
 	router.HandleFunc("/login", s.loginHandler).Methods(http.MethodGet)
 	router.HandleFunc("/login", s.loginAuth()).Methods(http.MethodPost)
@@ -112,6 +118,17 @@ func (s *Server) handlePage() http.HandlerFunc {
 		ctx, span = tracer.Start(ctx, "server.ListEntries")
 		defer span.End()
 
+		var histogram metric.Float64Histogram
+		histogram, err := meter.Float64Histogram(
+			"server.handlePage",
+			metric.WithDescription("Duration of handlePage"),
+			metric.WithUnit("s"),
+		)
+		if err != nil {
+			s.log.Error().Err(errors.New("metrics")).Msg(err.Error())
+		}
+		start := time.Now()
+
 		entries, err := s.bookstore.ListEntries(ctx)
 		if err != nil {
 			span.RecordError(err)
@@ -125,7 +142,8 @@ func (s *Server) handlePage() http.HandlerFunc {
 			s.log.Error().Err(errors.New("template")).Msg(err.Error())
 			return
 		}
-
+		duration := time.Since(start)
+		defer histogram.Record(r.Context(), duration.Seconds())
 	}
 }
 

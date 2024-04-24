@@ -18,7 +18,9 @@ import (
 	"github.com/led0nk/guestbook/token"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -86,6 +88,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
+	//NOTE: tracing configuration
 	grpcOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock()}
 	conn, err := grpc.NewClient("localhost:4317", grpcOptions...)
 	if err != nil {
@@ -94,13 +97,22 @@ func main() {
 	}
 	defer conn.Close()
 
-	otelexporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
+	oteltraceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
 	if err != nil {
 		logger.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
-	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(otelexporter))
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(oteltraceExporter))
 	otel.SetTracerProvider(tp)
+
+	//NOTE: metrics configuration
+	otelmetricsExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(conn))
+	if err != nil {
+		logger.Error().Err(err).Msg("")
+		os.Exit(1)
+	}
+	mp := metric.NewMeterProvider(metric.WithReader(metric.NewPeriodicReader(otelmetricsExporter)))
+	otel.SetMeterProvider(mp)
 
 	//in memory
 	tokenStorage, err := token.CreateTokenService(os.Getenv("TOKENSECRET"))
