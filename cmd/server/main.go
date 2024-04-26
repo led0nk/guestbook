@@ -35,10 +35,10 @@ func main() {
 			"localhost:8080",
 			"server port")
 		entryStr = flag.String("entrydata",
-			"file://./testdata/entries.json",
+			"file://testdata/entries.json",
 			"link/path to entry-database")
 		userStr = flag.String("userdata",
-			"file://./testdata/user.json",
+			"file://testdata/user.json",
 			"link to user-database")
 		envStr = flag.String("envvar's",
 			"testdata/.env",
