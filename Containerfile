@@ -1,5 +1,7 @@
 FROM golang:1.22
 
+LABEL org.opencontainers.image.source https://github.com/led0nk/guestbook
+
 COPY . /go/src/github.com/led0nk/guestbook
 
 WORKDIR /go/src/github.com/led0nk/guestbook
