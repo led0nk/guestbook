@@ -1,0 +1,28 @@
+version: "3.5"
+services:
+  grafana:
+    networks:
+      - backend
+    image: grafana/otel-lgtm
+    ports:
+      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+    volumes:
+      - "./../monitoring/grafana-dashboards.yaml:/otel-lgtm/grafana-v10.4.1/conf/provisioning/dashboards/grafana-dashboards.yaml:Z"
+      - "./../monitoring/grafana-dashboard-otel-dashboard.json:/otel-lgtm/grafana-dashboard-otel-dashboard.json:Z"
+  guestbook:
+    networks:
+      - backend
+    image: ghcr.io/led0nk/guestbook:latest
+    command: /guestbook -addr=0.0.0.0:8080 -grpcaddr=grafana:4317
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - "./../testdata:/testdata:Z"
+
+networks:
+  backend:
+
+volumes:
+  configs:

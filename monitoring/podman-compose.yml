@@ -44,5 +44,13 @@ services:
       - "--enable-feature=otlp-write-receiver"
       - "--config.file=/etc/prometheus/prometheus.yml"
 
+  # Grafana for visualization
+  grafana:
+    networks:
+      - backend
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+
 networks:
   backend:
