@@ -1,6 +1,7 @@
 ROOT_DIR=$(shell git rev-parse --show-toplevel)
 TOOLS_DIR=$(ROOT_DIR)/.tools
 GUESTBOOK := $(ROOT_DIR)/bin/guestbook
+COMPOSE_FILE := $(ROOT_DIR)/monitoring-lgtm/podman-compose.yaml
 
 # Returns all .go-files
 ALL_GO_FILES=$(shell find $(ROOT_DIR) -type f -name "*.go")

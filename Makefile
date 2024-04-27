@@ -52,3 +52,11 @@ run: gofmt build
 .PHONY: gorun
 gorun: 
 	go run cmd/server/main.go
+
+.PHONY: compose-up
+compose-up:
+	podman-compose -f $(COMPOSE_FILE) up
+
+.PHONY: compose-down
+compose-down:
+	podman-compose -f $(COMPOSE_FILE) down
