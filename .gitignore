@@ -2,3 +2,4 @@
 cmd/server/server
 bin
 .tools
+test/

@@ -14,4 +14,4 @@ COPY --from=0 /guestbook /guestbook
 
 EXPOSE 8080
 
-CMD ["/guestbook"]
+CMD ["/guestbook", "-addr", "0.0.0.0:8080"]
