@@ -34,6 +34,9 @@ func main() {
 		addr = flag.String("addr",
 			"localhost:8080",
 			"server port")
+		grpcaddr = flag.String("grpcaddr",
+			"localhost:4317",
+			"grpc address")
 		entryStr = flag.String("entrydata",
 			"file://testdata/entries.json",
 			"link/path to entry-database")
@@ -90,7 +93,7 @@ func main() {
 
 	//NOTE: tracing configuration
 	grpcOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock()}
-	conn, err := grpc.NewClient("localhost:4317", grpcOptions...)
+	conn, err := grpc.NewClient(*grpcaddr, grpcOptions...)
 	if err != nil {
 		logger.Error().Err(err).Msg("")
 		os.Exit(1)
