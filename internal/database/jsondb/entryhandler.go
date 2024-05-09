@@ -194,10 +194,6 @@ func (b *BookStorage) GetEntryByID(ctx context.Context, id uuid.UUID) ([]*model.
 			entries = append(entries, entry)
 		}
 	}
-	if len(entries) == 0 {
-		return nil, errors.New("no entries found for ")
-
-	}
 	return entries, nil
 }
 

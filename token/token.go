@@ -34,7 +34,7 @@ func CreateTokenService(secret string) (*TokenStorage, error) {
 	return tokenService, nil
 }
 
-func (t *TokenStorage) CreateToken(ctx context.Context, session string, ID uuid.UUID, remember bool) (*http.Cookie, error) {
+func (t *TokenStorage) CreateToken(ctx context.Context, session string, domain string, ID uuid.UUID, remember bool) (*http.Cookie, error) {
 	var span trace.Span
 	_, span = tracer.Start(ctx, "CreateToken")
 	defer span.End()
@@ -66,6 +66,7 @@ func (t *TokenStorage) CreateToken(ctx context.Context, session string, ID uuid.
 	cookie := http.Cookie{
 		Name:     session,
 		Value:    tokenString,
+		Domain:   domain,
 		Path:     "/",
 		Expires:  expiration,
 		HttpOnly: true,

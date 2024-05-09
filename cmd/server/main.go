@@ -46,13 +46,16 @@ func main() {
 		envStr = flag.String("envvar's",
 			"testdata/.env",
 			"path to .env-file")
+		domain = flag.String("domain",
+			"127.0.0.1",
+			"given domain for cookies/mail")
 		bStore db.GuestBookStore
 		uStore db.UserStore
 		tStore db.TokenStore
 	)
 	flag.Parse()
 	//TODO: bring into func to easily apply flags
-	u, err := url.Parse(utils.DerefString(entryStr))
+	u, err := url.Parse(*entryStr)
 	if err != nil {
 		panic(err)
 	}
@@ -68,7 +71,7 @@ func main() {
 		}).(*jsondb.BookStorage)
 
 	//TODO: bring into func to easily apply flags
-	u, err = url.Parse(utils.DerefString(userStr))
+	u, err = url.Parse(*userStr)
 	if err != nil {
 		panic(err)
 	}
@@ -82,7 +85,7 @@ func main() {
 			return result, nil
 		}).(*jsondb.UserStorage)
 
-	err = godotenv.Load(utils.DerefString(envStr))
+	err = godotenv.Load(*envStr)
 	if err != nil {
 		logger.Error().Err(err).Msg("")
 		panic("bad mailer env")
@@ -124,9 +127,6 @@ func main() {
 	}
 	tStore = tokenStorage
 
-	//protect from nil pointer
-	address := utils.DerefString(addr)
-
 	//create templatehandler
 	templates := templates.NewTemplateHandler()
 	//create mailerservice
@@ -137,6 +137,6 @@ func main() {
 		os.Getenv("HOST"),
 		os.Getenv("PORT"))
 	//create Server
-	server := v1.NewServer(address, mailer, templates, logger, bStore, uStore, tStore)
+	server := v1.NewServer(*addr, mailer, *domain, templates, logger, bStore, uStore, tStore)
 	server.ServeHTTP()
 }

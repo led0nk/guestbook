@@ -27,6 +27,7 @@ var meter = otel.GetMeterProvider().Meter("github.com/led0nk/guestbook/api/v1")
 type Server struct {
 	addr       string
 	mailer     Mailerservice
+	domain     string
 	templates  *templates.TemplateHandler
 	log        zerolog.Logger
 	bookstore  db.GuestBookStore
@@ -37,6 +38,7 @@ type Server struct {
 func NewServer(
 	address string,
 	mailer Mailerservice,
+	domain string,
 	templates *templates.TemplateHandler,
 	logger zerolog.Logger,
 	bStore db.GuestBookStore,
@@ -46,6 +48,7 @@ func NewServer(
 	return &Server{
 		addr:       address,
 		mailer:     mailer,
+		domain:     domain,
 		templates:  templates,
 		log:        logger,
 		bookstore:  bStore,

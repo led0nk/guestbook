@@ -12,14 +12,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// protection from nil pointers
-func DerefString(s *string) string {
-	if s != nil {
-		return *s
-	}
-	return ""
-}
-
 func CheckFlag(flag *string, logger zerolog.Logger, fn func(string) (interface{}, error)) interface{} {
 	var rStore interface{}
 	u, err := url.Parse(*flag)

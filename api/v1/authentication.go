@@ -90,7 +90,7 @@ func (s *Server) loginAuth() http.HandlerFunc {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		cookie, err := s.tokenstore.CreateToken(ctx, "session", user.ID, utils.FormValueBool(r.FormValue("Rememberme")))
+		cookie, err := s.tokenstore.CreateToken(ctx, "session", s.domain, user.ID, utils.FormValueBool(r.FormValue("Rememberme")))
 		if err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())

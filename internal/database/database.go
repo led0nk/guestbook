@@ -30,7 +30,7 @@ type UserStore interface {
 }
 
 type TokenStore interface {
-	CreateToken(context.Context, string, uuid.UUID, bool) (*http.Cookie, error)
+	CreateToken(context.Context, string, string, uuid.UUID, bool) (*http.Cookie, error)
 	DeleteToken(context.Context, uuid.UUID) error
 	GetTokenValue(context.Context, *http.Cookie) (uuid.UUID, error)
 	Valid(context.Context, string) (bool, error)
