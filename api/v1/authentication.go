@@ -498,8 +498,8 @@ func (s *Server) submitUserData() http.HandlerFunc {
 		updatedUser := model.User{
 			ID:               user.ID,
 			Password:         user.Password,
-			Name:             r.FormValue("Name"),
-			Email:            r.FormValue("Email"),
+			Name:             html.EscapeString(r.FormValue("Name")),
+			Email:            html.EscapeString(r.FormValue("Email")),
 			IsAdmin:          user.IsAdmin,
 			IsVerified:       user.IsVerified,
 			VerificationCode: user.VerificationCode,

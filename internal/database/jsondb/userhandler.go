@@ -76,6 +76,13 @@ func (u *UserStorage) CreateUser(ctx context.Context, user *model.User) (uuid.UU
 		user.ID = uuid.New()
 	}
 
+	span.AddEvent("Check for Email")
+	for _, userexist := range u.user {
+		if userexist.Email == user.Email {
+			return uuid.Nil, errors.New("email cannot be used more than once")
+		}
+	}
+
 	u.user[user.ID] = user
 	if err := u.writeUserJSON(); err != nil {
 		return uuid.Nil, err
