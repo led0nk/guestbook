@@ -70,7 +70,7 @@ func (t *TokenStorage) CreateToken(ctx context.Context, session string, domain s
 		Path:     "/",
 		Expires:  expiration,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
 	}
 
