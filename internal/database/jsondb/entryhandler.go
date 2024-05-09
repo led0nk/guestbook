@@ -164,9 +164,6 @@ func (b *BookStorage) GetEntryByName(ctx context.Context, name string) ([]*model
 			entries = append(entries, entry)
 		}
 	}
-	if len(entries) == 0 {
-		return nil, errors.New("no entries found for " + name)
-	}
 
 	span.AddEvent("sort slice")
 	sort.Slice(entries, func(i, j int) bool { return entries[i].CreatedAt > entries[j].CreatedAt })
