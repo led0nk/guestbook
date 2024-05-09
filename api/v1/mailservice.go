@@ -7,6 +7,6 @@ import (
 
 // interface for Mailerservice for Verification-Mail and Reset-PW-Mail
 type Mailerservice interface {
-	SendVerMail(*model.User, *templates.TemplateHandler) error
+	SendVerMail(*model.User, string, *templates.TemplateHandler) error
 	SendPWMail(*model.User, *templates.TemplateHandler) error
 }

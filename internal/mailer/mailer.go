@@ -29,9 +29,20 @@ func NewMailer(
 	}
 }
 
-func (m *Mailer) SendVerMail(user *model.User, tmpl *templates.TemplateHandler) error {
+type data struct {
+	User   *model.User
+	Domain string
+}
+
+func (m *Mailer) SendVerMail(user *model.User, domain string, tmpl *templates.TemplateHandler) error {
 	var body bytes.Buffer
-	err := tmpl.TmplVerMail.Execute(&body, user)
+
+	data := &data{
+		User:   user,
+		Domain: domain,
+	}
+
+	err := tmpl.TmplVerMail.Execute(&body, data)
 	if err != nil {
 		return err
 	}

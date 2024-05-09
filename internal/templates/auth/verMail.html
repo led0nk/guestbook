@@ -12,9 +12,9 @@
 </head>
 
 <body class="bg-slate-300">
-  Hello {{ .Name }}, this is your verification code: {{ .VerificationCode }}
-  Please enter your code here:
-  <a href="http://127.0.0.1:8080/user/verify">Link to Verification-Website</a>
+  Hello {{ .User.Name }}, this is your verification code: {{
+  .User.VerificationCode }} Please enter your code here:
+  <a href="{{ .Domain }}/user/verify">Link to Verification-Website</a>
 </body>
 
 </html>

@@ -197,7 +197,7 @@ func (s *Server) signupAuth() http.HandlerFunc {
 			w.WriteHeader(http.StatusUnauthorized)
 		}
 
-		err = s.mailer.SendVerMail(&newUser, s.templates)
+		err = s.mailer.SendVerMail(&newUser, s.domain, s.templates)
 		if err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
@@ -389,7 +389,7 @@ func (s *Server) resendVer() http.HandlerFunc {
 		}
 		user.VerificationCode = utils.RandomString(6)
 		user.ExpirationTime = time.Now().Add(time.Minute * 5)
-		err = s.mailer.SendVerMail(user, s.templates)
+		err = s.mailer.SendVerMail(user, s.domain, s.templates)
 		if err != nil {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
