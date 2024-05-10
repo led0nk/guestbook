@@ -8,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/joho/godotenv"
 	v1 "github.com/led0nk/guestbook/api/v1"
 	"github.com/led0nk/guestbook/cmd/utils"
 	templates "github.com/led0nk/guestbook/internal"
@@ -34,13 +33,18 @@ func main() {
 		addr     = flag.String("addr", "localhost:8080", "server port")
 		grpcaddr = flag.String("grpcaddr", "localhost:4317", "grpc address")
 		dbase    = flag.String("db", "file://testdata", "path to database")
-		envStr   = flag.String("envvar's", "testdata/.env", "path to .env-file")
+		envStr   = flag.String("env", "testdata/.env", "path to .env-file")
 		domain   = flag.String("domain", "127.0.0.1", "given domain for cookies/mail")
 		bStore   db.GuestBookStore
 		uStore   db.UserStore
 		tStore   db.TokenStore
 	)
 	flag.Parse()
+
+	logger.Info().Str("addr", *addr).Msg("")
+	logger.Info().Str("grpcaddr", *grpcaddr).Msg("")
+	logger.Info().Str("db", *dbase).Msg("")
+	logger.Info().Str("env", *envStr).Msg("")
 
 	u, err := url.Parse(*dbase)
 	if err != nil {
@@ -61,12 +65,6 @@ func main() {
 	default:
 		logger.Error().Err(errors.New("db")).Msg("no database provided")
 		os.Exit(1)
-	}
-
-	err = godotenv.Load(*envStr)
-	if err != nil {
-		logger.Error().Err(err).Msg("")
-		panic("bad mailer env")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -99,22 +97,26 @@ func main() {
 	mp := metric.NewMeterProvider(metric.WithReader(metric.NewPeriodicReader(otelmetricsExporter)))
 	otel.SetMeterProvider(mp)
 
+	//NOTE: load .env file / creates if none provided
+	envmap, err := utils.LoadEnv(logger, *envStr)
+	if err != nil {
+		logger.Error().Err(errors.New(".env")).Msg(err.Error())
+	}
+
 	//in memory
-	tokenStorage, err := token.CreateTokenService(os.Getenv("TOKENSECRET"))
+	tStore, err = token.CreateTokenService(envmap["TOKENSECRET"])
 	if err != nil {
 		logger.Error().Err(err).Msg("")
 	}
-	tStore = tokenStorage
 
 	//create templatehandler
 	templates := templates.NewTemplateHandler()
 	//create mailerservice
-	utils.LoadEnv(logger)
 	mailer := mailer.NewMailer(
-		os.Getenv("EMAIL"),
-		os.Getenv("SMTPPW"),
-		os.Getenv("HOST"),
-		os.Getenv("PORT"))
+		envmap["EMAIL"],
+		envmap["SMTPPW"],
+		envmap["HOST"],
+		envmap["PORT"])
 	//create Server
 	server := v1.NewServer(*addr, mailer, *domain, templates, logger, bStore, uStore, tStore)
 	server.ServeHTTP()

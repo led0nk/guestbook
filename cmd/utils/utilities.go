@@ -4,9 +4,8 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
+	"path/filepath"
 	"unicode"
-
-	"regexp"
 
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
@@ -52,15 +51,30 @@ func Capitalize(s string) string {
 }
 
 // LoadEnv loads env vars from .env
-func LoadEnv(logger zerolog.Logger) {
-	re := regexp.MustCompile(`^(.*` + "guestbook" + `)`)
-	cwd, _ := os.Getwd()
-	rootPath := re.Find([]byte(cwd))
-
-	err := godotenv.Load(string(rootPath) + `/testdata` + `/.env`)
-	if err != nil {
-		logger.Fatal().Err(err).Msg(cwd)
-
-		os.Exit(-1)
+func LoadEnv(logger zerolog.Logger, path string) (map[string]string, error) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		err = os.MkdirAll(filepath.Dir(path), 0777)
+		if err != nil {
+			return nil, err
+		}
+		envMap := make(map[string]string, 0)
+		envMap["TOKENSECRET"] = "secret"
+		err := godotenv.Write(envMap, path)
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	envmap, err := godotenv.Read(path)
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range envmap {
+		if v == "" {
+			logger.Warn().Str(k, "empty value").Msg("")
+		}
+	}
+
+	return envmap, nil
 }
