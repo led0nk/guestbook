@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"guestbook-demo","namespace":"default"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"guestbook-demo"}},"template":{"metadata":{"labels":{"app":"guestbook-demo"}},"spec":{"containers":[{"args":["/guestbook","-addr","0.0.0.0:80","-grpcaddr","lgtm-service.observability:4317","-domain","test.k8s.klimlive.de"],"image":"ghcr.io/led0nk/guestbook:latest","imagePullPolicy":"Always","name":"nginx","ports":[{"containerPort":80}],"volumeMounts":[{"mountPath":"/testdata","name":"testdata-volume"},{"mountPath":"/etc/ssl/certs/ca-certificates.crt","name":"ca-certificates","readOnly":true}]}],"initContainers":[{"command":["/bin/sh","-c","echo '{}' \u003e /testdata/entries.json \u0026\u0026 echo '{}' \u003e /testdata/user.json \u0026\u0026 echo 'EMAIL=\"janik.knodel@gmail.com\"\nSMTPPW=\"qnkx ndoi vmom ezvo\"\nHOST=\"smtp.gmail.com\"\nPORT=\"587\"\nTOKENSECRET=\"secret\"' \u003e /testdata/.env"],"image":"busybox:1.32","name":"create-files","volumeMounts":[{"mountPath":"/testdata","name":"testdata-volume"}]}],"volumes":[{"emptyDir":{},"name":"testdata-volume"},{"hostPath":{"path":"/etc/ssl/certs/ca-certificates.crt"},"name":"ca-certificates"}]}}}}
+  creationTimestamp: "2024-05-10T19:50:39Z"
+  generation: 1
+  name: guestbook-demo
+  namespace: default
+  resourceVersion: "1366"
+  uid: da0f4fa2-49ca-40c4-a76d-209f07268b8f
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: guestbook-demo
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: guestbook-demo
+    spec:
+      containers:
+      - args:
+        - /guestbook
+        - -addr
+        - 0.0.0.0:80
+        - -grpcaddr
+        - lgtm-service.observability:4317
+        - -domain
+        - test.k8s.klimlive.de
+        image: ghcr.io/led0nk/guestbook:latest
+        imagePullPolicy: Always
+        name: nginx
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /testdata
+          name: testdata-volume
+        - mountPath: /etc/ssl/certs/ca-certificates.crt
+          name: ca-certificates
+          readOnly: true
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - |-
+          echo '{}' > /testdata/entries.json && echo '{}' > /testdata/user.json && echo 'EMAIL="janik.knodel@gmail.com"
+          SMTPPW="qnkx ndoi vmom ezvo"
+          HOST="smtp.gmail.com"
+          PORT="587"
+          TOKENSECRET="secret"' > /testdata/.env
+        image: busybox:1.32
+        imagePullPolicy: IfNotPresent
+        name: create-files
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /testdata
+          name: testdata-volume
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir: {}
+        name: testdata-volume
+      - hostPath:
+          path: /etc/ssl/certs/ca-certificates.crt
+          type: ""
+        name: ca-certificates
+status:
+  availableReplicas: 1
+  conditions:
+  - lastTransitionTime: "2024-05-10T19:50:42Z"
+    lastUpdateTime: "2024-05-10T19:50:42Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  - lastTransitionTime: "2024-05-10T19:50:39Z"
+    lastUpdateTime: "2024-05-10T19:50:42Z"
+    message: ReplicaSet "guestbook-demo-6fdffc7f49" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    status: "True"
+    type: Progressing
+  observedGeneration: 1
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1
