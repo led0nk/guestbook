@@ -59,7 +59,7 @@ func NewServer(
 
 func (s *Server) ServeHTTP() {
 	// has to be called in main including above initialisations
-	router := mux.NewRouter()
+	router := http.NewServeMux()
 
 	authMiddleware := mux.NewRouter().PathPrefix("/user").Subrouter()
 	adminMiddleware := mux.NewRouter().PathPrefix("/admin").Subrouter()
@@ -70,17 +70,17 @@ func (s *Server) ServeHTTP() {
 	router.PathPrefix("/user").Handler(authMiddleware)
 	router.PathPrefix("/admin").Handler(adminMiddleware)
 	// routing
-	router.HandleFunc("/", s.handlePage()).Methods(http.MethodGet)
+	router.HandleFunc("GET /", s.handlePage())
 	//NOTE: register /metrics
 	router.Handle("/metrics", promhttp.Handler())
 	// router.HandleFunc("/", s.delete()).Methods(http.MethodPost)
-	router.HandleFunc("/login", s.loginHandler).Methods(http.MethodGet)
-	router.HandleFunc("/login", s.loginAuth()).Methods(http.MethodPost)
-	router.HandleFunc("/logout", s.logoutAuth()).Methods(http.MethodGet)
-	router.HandleFunc("/signup", s.signupHandler).Methods(http.MethodGet)
-	router.HandleFunc("/signup", s.signupAuth()).Methods(http.MethodPost)
-	router.HandleFunc("/forgot-pw", s.forgotHandler).Methods(http.MethodGet)
-	router.HandleFunc("/forgot-pw", s.forgotPW()).Methods(http.MethodPost)
+	router.HandleFunc("GET /login", s.loginHandler)
+	router.HandleFunc("POST /login", s.loginAuth())
+	router.HandleFunc("GET /logout", s.logoutAuth())
+	router.HandleFunc("GET /signup", s.signupHandler)
+	router.HandleFunc("POST /signup", s.signupAuth())
+	router.HandleFunc("GET /forgot-pw", s.forgotHandler)
+	router.HandleFunc("POST /forgot-pw", s.forgotPW())
 	authMiddleware.HandleFunc("/verify", s.verifyHandler).Methods(http.MethodGet)
 	authMiddleware.HandleFunc("/verify", s.verifyAuth()).Methods(http.MethodPost)
 	// routing through authentication via /user
