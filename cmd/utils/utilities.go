@@ -63,6 +63,7 @@ func LoadEnv(logger zerolog.Logger, path string) (map[string]string, error) {
 		if err != nil {
 			return nil, err
 		}
+		logger.Info().Str("created", path).Msg("")
 	}
 
 	envmap, err := godotenv.Read(path)
