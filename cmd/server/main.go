@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"net/url"
@@ -15,6 +16,13 @@ import (
 	"github.com/led0nk/guestbook/internal/mailer"
 	"github.com/led0nk/guestbook/token"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/metric"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -59,35 +67,35 @@ func main() {
 		os.Exit(1)
 	}
 
-	//ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	//defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
 
 	//NOTE: grpc configuration
-	//grpcOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock()}
-	//conn, err := grpc.NewClient(*grpcaddr, grpcOptions...)
-	//if err != nil {
-	//	logger.Error().Err(err).Msg("")
-	//	os.Exit(1)
-	//}
-	//defer conn.Close()
+	grpcOptions := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock()}
+	conn, err := grpc.NewClient(*grpcaddr, grpcOptions...)
+	if err != nil {
+		logger.Error().Err(err).Msg("")
+		os.Exit(1)
+	}
+	defer conn.Close()
 
-	////NOTE: tracing configuration
-	//oteltraceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
-	//if err != nil {
-	//	logger.Error().Err(err).Msg("")
-	//	os.Exit(1)
-	//}
-	//tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(oteltraceExporter))
-	//otel.SetTracerProvider(tp)
+	//NOTE: tracing configuration
+	oteltraceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
+	if err != nil {
+		logger.Error().Err(err).Msg("")
+		os.Exit(1)
+	}
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(oteltraceExporter))
+	otel.SetTracerProvider(tp)
 
-	////NOTE: metrics configuration
-	//otelmetricsExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(conn))
-	//if err != nil {
-	//	logger.Error().Err(err).Msg("")
-	//	os.Exit(1)
-	//}
-	//mp := metric.NewMeterProvider(metric.WithReader(metric.NewPeriodicReader(otelmetricsExporter)))
-	//otel.SetMeterProvider(mp)
+	//NOTE: metrics configuration
+	otelmetricsExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(conn))
+	if err != nil {
+		logger.Error().Err(err).Msg("")
+		os.Exit(1)
+	}
+	mp := metric.NewMeterProvider(metric.WithReader(metric.NewPeriodicReader(otelmetricsExporter)))
+	otel.SetMeterProvider(mp)
 
 	//NOTE: load .env file / creates if none provided
 	envmap, err := utils.LoadEnv(logger, *envStr)
