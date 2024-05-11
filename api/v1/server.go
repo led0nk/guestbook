@@ -57,12 +57,12 @@ func NewServer(
 }
 
 func (s *Server) ServeHTTP() {
-	// has to be called in main including above initialisations
 	r := http.NewServeMux()
 
-	//TODO: implement function to wrap middlewares and handlerfuncs
 	otelmw := otelhttp.NewMiddleware("guestbook")
-	// routing
+	authmw := middleware.Auth(s.tokenstore, s.log)
+	adminmw := middleware.AdminAuth(s.tokenstore, s.userstore, s.log)
+
 	r.Handle("GET /", http.HandlerFunc(s.handlePage))
 	//NOTE: register /metrics
 	r.Handle("GET /metrics", promhttp.Handler())
@@ -73,24 +73,24 @@ func (s *Server) ServeHTTP() {
 	r.Handle("POST /signup", http.HandlerFunc(s.signupAuth))
 	r.Handle("GET /forgot-pw", http.HandlerFunc(s.forgotHandler))
 	r.Handle("POST /forgot-pw", http.HandlerFunc(s.forgotPW))
-	// routing through authentication via /user
-	r.Handle("GET /user/verify", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.verifyHandler)))
-	r.Handle("POST /user/verify", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.verifyAuth)))
-	r.Handle("GET /user/dashboard", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.dashboardHandler)))
-	r.Handle("POST /user/dashboard/{ID}", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.changeUserData)))
-	r.Handle("PUT /user/dashboard/{ID}", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.submitUserData)))
-	r.Handle("GET /user/create", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.createHandler)))
-	r.Handle("GET /user/search", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.searchHandler)))
-	r.Handle("GET /user/search/", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.search)))
-	r.Handle("POST /user/create", middleware.Auth(s.tokenstore, s.log, s.createEntry()))
-	r.Handle("PUT /user/dashboard/{ID}/password-reset", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.passwordReset)))
-	// routing through admincheck via /admin
-	r.Handle("GET /admin/dashboard", middleware.AdminAuth(s.tokenstore, s.userstore, s.log, http.HandlerFunc(s.adminHandler)))
-	r.Handle("DELETE /admin/dashboard/{ID}", middleware.AdminAuth(s.tokenstore, s.userstore, s.log, http.HandlerFunc(s.deleteUser)))
-	r.Handle("POST /admin/dashboard/{ID}", middleware.AdminAuth(s.tokenstore, s.userstore, s.log, http.HandlerFunc(s.updateUser)))
-	r.Handle("PUT /admin/dashboard/{ID}", middleware.AdminAuth(s.tokenstore, s.userstore, s.log, http.HandlerFunc(s.saveUser)))
-	r.Handle("PUT /admin/dashboard/{ID}/verify", middleware.AdminAuth(s.tokenstore, s.userstore, s.log, http.HandlerFunc(s.resendVer)))
-	r.Handle("PUT /admin/dashboard/{ID}/password-reset", middleware.AdminAuth(s.tokenstore, s.userstore, s.log, http.HandlerFunc(s.passwordReset)))
+
+	r.Handle("GET /user/verify", authmw(http.HandlerFunc(s.verifyHandler)))
+	r.Handle("POST /user/verify", authmw(http.HandlerFunc(s.verifyAuth)))
+	r.Handle("GET /user/dashboard", authmw(http.HandlerFunc(s.dashboardHandler)))
+	r.Handle("POST /user/dashboard/{ID}", authmw(http.HandlerFunc(s.changeUserData)))
+	r.Handle("PUT /user/dashboard/{ID}", authmw(http.HandlerFunc(s.submitUserData)))
+	r.Handle("GET /user/create", authmw(http.HandlerFunc(s.createHandler)))
+	r.Handle("GET /user/search", authmw(http.HandlerFunc(s.searchHandler)))
+	r.Handle("GET /user/search/", authmw(http.HandlerFunc(s.search)))
+	r.Handle("POST /user/create", authmw(http.HandlerFunc(s.createEntry)))
+	r.Handle("PUT /user/dashboard/{ID}/password-reset", authmw(http.HandlerFunc(s.passwordReset)))
+
+	r.Handle("GET /admin/dashboard", adminmw(http.HandlerFunc(s.adminHandler)))
+	r.Handle("DELETE /admin/dashboard/{ID}", adminmw(http.HandlerFunc(s.deleteUser)))
+	r.Handle("POST /admin/dashboard/{ID}", adminmw(http.HandlerFunc(s.updateUser)))
+	r.Handle("PUT /admin/dashboard/{ID}", adminmw(http.HandlerFunc(s.saveUser)))
+	r.Handle("PUT /admin/dashboard/{ID}/verify", adminmw(http.HandlerFunc(s.resendVer)))
+	r.Handle("PUT /admin/dashboard/{ID}/password-reset", adminmw(http.HandlerFunc(s.passwordReset)))
 
 	s.log.Info().Str("listening to", s.addr).Msg("")
 
@@ -317,52 +317,50 @@ func (s *Server) forgotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) createEntry() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var span trace.Span
-		ctx := r.Context()
-		ctx, span = tracer.Start(ctx, "server.createEntry")
-		defer span.End()
+func (s *Server) createEntry(w http.ResponseWriter, r *http.Request) {
+	var span trace.Span
+	ctx := r.Context()
+	ctx, span = tracer.Start(ctx, "server.createEntry")
+	defer span.End()
 
-		err := r.ParseForm()
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			s.log.Err(errors.New("request")).Msg(err.Error())
-			return
-		}
-		session, err := r.Cookie("session")
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			s.log.Err(errors.New("cookie")).Msg(err.Error())
-			return
-		}
-		userID, err := s.tokenstore.GetTokenValue(ctx, session)
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			s.log.Err(errors.New("token")).Msg(err.Error())
-			return
-		}
-		user, err := s.userstore.GetUserByID(ctx, userID)
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			s.log.Err(errors.New("user")).Msg(err.Error())
-			return
-		}
-		newEntry := model.GuestbookEntry{Name: user.Name, Message: html.EscapeString(r.FormValue("message")), UserID: user.ID}
-
-		_, err = s.bookstore.CreateEntry(ctx, &newEntry)
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			s.log.Err(errors.New("entry")).Msg(err.Error())
-			return
-		}
-		http.Redirect(w, r, "/user/dashboard", http.StatusFound)
+	err := r.ParseForm()
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		s.log.Err(errors.New("request")).Msg(err.Error())
+		return
 	}
+	session, err := r.Cookie("session")
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		s.log.Err(errors.New("cookie")).Msg(err.Error())
+		return
+	}
+	userID, err := s.tokenstore.GetTokenValue(ctx, session)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		s.log.Err(errors.New("token")).Msg(err.Error())
+		return
+	}
+	user, err := s.userstore.GetUserByID(ctx, userID)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		s.log.Err(errors.New("user")).Msg(err.Error())
+		return
+	}
+	newEntry := model.GuestbookEntry{Name: user.Name, Message: html.EscapeString(r.FormValue("message")), UserID: user.ID}
+
+	_, err = s.bookstore.CreateEntry(ctx, &newEntry)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		s.log.Err(errors.New("entry")).Msg(err.Error())
+		return
+	}
+	http.Redirect(w, r, "/user/dashboard", http.StatusFound)
 }
 
 func (s *Server) changeUserData(w http.ResponseWriter, r *http.Request) {
