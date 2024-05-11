@@ -7,14 +7,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	templates "github.com/led0nk/guestbook/internal"
 	db "github.com/led0nk/guestbook/internal/database"
 	"github.com/led0nk/guestbook/internal/middleware"
 	"github.com/led0nk/guestbook/internal/model"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
@@ -59,53 +58,45 @@ func NewServer(
 
 func (s *Server) ServeHTTP() {
 	// has to be called in main including above initialisations
-	router := http.NewServeMux()
+	r := http.NewServeMux()
 
-	authMiddleware := mux.NewRouter().PathPrefix("/user").Subrouter()
-	adminMiddleware := mux.NewRouter().PathPrefix("/admin").Subrouter()
-	authMiddleware.Use(middleware.Auth(s.tokenstore, s.log))
-	adminMiddleware.Use(middleware.AdminAuth(s.tokenstore, s.userstore, s.log))
-	router.Use(middleware.Logger(s.log))
-	router.Use(otelmux.Middleware("guestbook"))
-	router.PathPrefix("/user").Handler(authMiddleware)
-	router.PathPrefix("/admin").Handler(adminMiddleware)
+	//TODO: implement function to wrap middlewares and handlerfuncs
+	otelmw := otelhttp.NewMiddleware("guestbook")
 	// routing
-	router.HandleFunc("GET /", s.handlePage())
+	r.Handle("GET /", http.HandlerFunc(s.handlePage))
 	//NOTE: register /metrics
-	router.Handle("/metrics", promhttp.Handler())
-	// router.HandleFunc("/", s.delete()).Methods(http.MethodPost)
-	router.HandleFunc("GET /login", s.loginHandler)
-	router.HandleFunc("POST /login", s.loginAuth())
-	router.HandleFunc("GET /logout", s.logoutAuth())
-	router.HandleFunc("GET /signup", s.signupHandler)
-	router.HandleFunc("POST /signup", s.signupAuth())
-	router.HandleFunc("GET /forgot-pw", s.forgotHandler)
-	router.HandleFunc("POST /forgot-pw", s.forgotPW())
-	authMiddleware.HandleFunc("/verify", s.verifyHandler).Methods(http.MethodGet)
-	authMiddleware.HandleFunc("/verify", s.verifyAuth()).Methods(http.MethodPost)
+	r.Handle("GET /metrics", promhttp.Handler())
+	r.Handle("GET /login", http.HandlerFunc(s.loginHandler))
+	r.Handle("POST /login", http.HandlerFunc(s.loginAuth))
+	r.Handle("GET /logout", http.HandlerFunc(s.logoutAuth))
+	r.Handle("GET /signup", http.HandlerFunc(s.signupHandler))
+	r.Handle("POST /signup", http.HandlerFunc(s.signupAuth))
+	r.Handle("GET /forgot-pw", http.HandlerFunc(s.forgotHandler))
+	r.Handle("POST /forgot-pw", http.HandlerFunc(s.forgotPW))
 	// routing through authentication via /user
-	authMiddleware.HandleFunc("/dashboard", s.dashboardHandler()).Methods(http.MethodGet)
-	authMiddleware.HandleFunc("/dashboard/{ID}", s.changeUserData()).Methods(http.MethodPost)
-	authMiddleware.HandleFunc("/dashboard/{ID}", s.submitUserData()).Methods(http.MethodPut)
-	authMiddleware.HandleFunc("/create", s.createHandler).Methods(http.MethodGet)
-	authMiddleware.HandleFunc("/search", s.searchHandler).Methods(http.MethodGet)
-	authMiddleware.HandleFunc("/search/", s.search()).Methods(http.MethodGet)
-	authMiddleware.HandleFunc("/create", s.createEntry()).Methods(http.MethodPost)
-	authMiddleware.HandleFunc("/dashboard/{ID}/password-reset", s.passwordReset()).Methods(http.MethodPut)
+	r.Handle("GET /user/verify", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.verifyHandler)))
+	r.Handle("POST /user/verify", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.verifyAuth)))
+	r.Handle("GET /user/dashboard", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.dashboardHandler)))
+	r.Handle("POST /user/dashboard/{ID}", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.changeUserData)))
+	r.Handle("PUT /user/dashboard/{ID}", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.submitUserData)))
+	r.Handle("GET /user/create", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.createHandler)))
+	r.Handle("GET /user/search", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.searchHandler)))
+	r.Handle("GET /user/search/", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.search)))
+	r.Handle("POST /user/create", middleware.Auth(s.tokenstore, s.log, s.createEntry()))
+	r.Handle("PUT /user/dashboard/{ID}/password-reset", middleware.Auth(s.tokenstore, s.log, http.HandlerFunc(s.passwordReset)))
 	// routing through admincheck via /admin
-	adminMiddleware.HandleFunc("/dashboard", s.adminHandler).Methods(http.MethodGet)
-	adminMiddleware.HandleFunc("/dashboard/{ID}", s.deleteUser()).Methods(http.MethodDelete)
-	adminMiddleware.HandleFunc("/dashboard/{ID}", s.updateUser()).Methods(http.MethodPost)
-	adminMiddleware.HandleFunc("/dashboard/{ID}", s.saveUser()).Methods(http.MethodPut)
-	adminMiddleware.HandleFunc("/dashboard/{ID}/verify", s.resendVer()).Methods(http.MethodPut)
-	adminMiddleware.HandleFunc("/dashboard/{ID}/password-reset", s.passwordReset()).Methods(http.MethodPut)
-	//TODO: implement in main log.Info("listening to: ")
+	r.Handle("GET /admin/dashboard", middleware.AdminAuth(s.tokenstore, s.userstore, s.log, http.HandlerFunc(s.adminHandler)))
+	r.Handle("DELETE /admin/dashboard/{ID}", middleware.AdminAuth(s.tokenstore, s.userstore, s.log, http.HandlerFunc(s.deleteUser)))
+	r.Handle("POST /admin/dashboard/{ID}", middleware.AdminAuth(s.tokenstore, s.userstore, s.log, http.HandlerFunc(s.updateUser)))
+	r.Handle("PUT /admin/dashboard/{ID}", middleware.AdminAuth(s.tokenstore, s.userstore, s.log, http.HandlerFunc(s.saveUser)))
+	r.Handle("PUT /admin/dashboard/{ID}/verify", middleware.AdminAuth(s.tokenstore, s.userstore, s.log, http.HandlerFunc(s.resendVer)))
+	r.Handle("PUT /admin/dashboard/{ID}/password-reset", middleware.AdminAuth(s.tokenstore, s.userstore, s.log, http.HandlerFunc(s.passwordReset)))
 
 	s.log.Info().Str("listening to", s.addr).Msg("")
 
 	srv := &http.Server{
 		Addr:    s.addr,
-		Handler: router,
+		Handler: middleware.Logger(s.log, otelmw(r)),
 	}
 	err := srv.ListenAndServe()
 	if err != nil {
@@ -114,40 +105,38 @@ func (s *Server) ServeHTTP() {
 }
 
 // hands over Entries to Handler and prints them out in template
-func (s *Server) handlePage() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var span trace.Span
-		ctx := r.Context()
-		ctx, span = tracer.Start(ctx, "server.ListEntries")
-		defer span.End()
+func (s *Server) handlePage(w http.ResponseWriter, r *http.Request) {
+	var span trace.Span
+	ctx := r.Context()
+	ctx, span = tracer.Start(ctx, "server.ListEntries")
+	defer span.End()
 
-		var histogram metric.Float64Histogram
-		histogram, err := meter.Float64Histogram(
-			"server.handlePage",
-			metric.WithDescription("Duration of handlePage"),
-			metric.WithUnit("s"),
-		)
-		if err != nil {
-			s.log.Error().Err(errors.New("metrics")).Msg(err.Error())
-		}
-		start := time.Now()
-
-		entries, err := s.bookstore.ListEntries(ctx)
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			s.log.Error().Err(errors.New("entry")).Msg(err.Error())
-		}
-		err = s.templates.TmplHome.Execute(w, &entries)
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			s.log.Error().Err(errors.New("template")).Msg(err.Error())
-			return
-		}
-		duration := time.Since(start)
-		defer histogram.Record(r.Context(), duration.Seconds())
+	var histogram metric.Float64Histogram
+	histogram, err := meter.Float64Histogram(
+		"server.handlePage",
+		metric.WithDescription("Duration of handlePage"),
+		metric.WithUnit("s"),
+	)
+	if err != nil {
+		s.log.Error().Err(errors.New("metrics")).Msg(err.Error())
 	}
+	start := time.Now()
+
+	entries, err := s.bookstore.ListEntries(ctx)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		s.log.Error().Err(errors.New("entry")).Msg(err.Error())
+	}
+	err = s.templates.TmplHome.Execute(w, &entries)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		s.log.Error().Err(errors.New("template")).Msg(err.Error())
+		return
+	}
+	duration := time.Since(start)
+	defer histogram.Record(r.Context(), duration.Seconds())
 }
 
 // searches with livesearch (htmx)
@@ -207,55 +196,52 @@ func (s *Server) signupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) dashboardHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var span trace.Span
-		ctx := r.Context()
-		ctx, span = tracer.Start(ctx, "server.dashboardHandler")
-		defer span.End()
+func (s *Server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
+	var span trace.Span
+	ctx := r.Context()
+	ctx, span = tracer.Start(ctx, "server.dashboardHandler")
+	defer span.End()
 
-		session, err := r.Cookie("session")
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			w.WriteHeader(http.StatusBadGateway)
-			s.log.Err(errors.New("cookie")).Msg(err.Error())
-			return
-		}
-		tokenValue, err := s.tokenstore.GetTokenValue(ctx, session)
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			w.WriteHeader(http.StatusBadGateway)
-			s.log.Err(errors.New("token")).Msg(err.Error())
-			return
-		}
-		user, err := s.userstore.GetUserByID(ctx, tokenValue)
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			w.WriteHeader(http.StatusBadGateway)
-			s.log.Err(errors.New("user")).Msg(err.Error())
-			return
-		}
-		user.Entry, err = s.bookstore.GetEntryByID(ctx, tokenValue)
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			w.WriteHeader(http.StatusBadGateway)
-			s.log.Err(errors.New("entry")).Msg(err.Error())
-			return
-		}
+	session, err := r.Cookie("session")
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusBadGateway)
+		s.log.Err(errors.New("cookie")).Msg(err.Error())
+		return
+	}
+	tokenValue, err := s.tokenstore.GetTokenValue(ctx, session)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusBadGateway)
+		s.log.Err(errors.New("token")).Msg(err.Error())
+		return
+	}
+	user, err := s.userstore.GetUserByID(ctx, tokenValue)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusBadGateway)
+		s.log.Err(errors.New("user")).Msg(err.Error())
+		return
+	}
+	user.Entry, err = s.bookstore.GetEntryByID(ctx, tokenValue)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusBadGateway)
+		s.log.Err(errors.New("entry")).Msg(err.Error())
+		return
+	}
 
-		err = s.templates.TmplDashboard.Execute(w, user)
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			w.WriteHeader(http.StatusBadGateway)
-			s.log.Err(errors.New("template")).Msg(err.Error())
-			return
-		}
-
+	err = s.templates.TmplDashboard.Execute(w, user)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		w.WriteHeader(http.StatusBadGateway)
+		s.log.Err(errors.New("template")).Msg(err.Error())
+		return
 	}
 }
 
@@ -379,33 +365,31 @@ func (s *Server) createEntry() http.HandlerFunc {
 	}
 }
 
-func (s *Server) changeUserData() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var span trace.Span
-		ctx := r.Context()
-		ctx, span = tracer.Start(ctx, "server.changeUserData")
-		defer span.End()
+func (s *Server) changeUserData(w http.ResponseWriter, r *http.Request) {
+	var span trace.Span
+	ctx := r.Context()
+	ctx, span = tracer.Start(ctx, "server.changeUserData")
+	defer span.End()
 
-		userID, err := uuid.Parse(mux.Vars(r)["ID"])
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			s.log.Err(errors.New("uuid")).Msg(err.Error())
-			return
-		}
-		user, err := s.userstore.GetUserByID(ctx, userID)
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			s.log.Err(errors.New("user")).Msg(err.Error())
-			return
-		}
-		err = s.templates.TmplDashboardUser.ExecuteTemplate(w, "user-update", user)
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			s.log.Err(errors.New("template")).Msg(err.Error())
-			return
-		}
+	userID, err := uuid.Parse(r.PathValue("ID"))
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		s.log.Err(errors.New("uuid")).Msg(err.Error())
+		return
+	}
+	user, err := s.userstore.GetUserByID(ctx, userID)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		s.log.Err(errors.New("user")).Msg(err.Error())
+		return
+	}
+	err = s.templates.TmplDashboardUser.ExecuteTemplate(w, "user-update", user)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		s.log.Err(errors.New("template")).Msg(err.Error())
+		return
 	}
 }

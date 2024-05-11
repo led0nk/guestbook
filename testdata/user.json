@@ -1,1 +1,13 @@
-{}
+{
+	"4aa28b9c-3c61-403b-9136-014866243795": {
+		"id": "4aa28b9c-3c61-403b-9136-014866243795",
+		"email": "shop@kndlive.de",
+		"name": "J Kno",
+		"password": "JDJhJDE0JE5HejhJVVc3aTJETmRXUGsvZHFQSXVZUjEyQ0t0ZlgxZU5KU2NyU3hLdU5Uc2thdmRjRzRl",
+		"entry": null,
+		"isadmin": false,
+		"isverified": false,
+		"verificationstring": "59iseI",
+		"expirationtime": "2024-05-11T21:09:08.652373374+02:00"
+	}
+}
