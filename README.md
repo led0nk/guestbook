@@ -3,7 +3,7 @@
 Welcome to the Guestbook! The Guestbook is designed to manage guestbook-entries for events e.g. a wedding or a birthday-party.
 The application is mainly written in [Go](https://go.dev/), instrumented via [OpenTelemetry](https://opentelemetry.io/) and presented by the [Grafana-LGTM-Stack](https://github.com/grafana/docker-otel-lgtm) for improved observability.
 
-![1715542600-guestbook.png](assets/imgs/1715542600-guestbook.png)
+![guestbook.png](https://github.com/led0nk/guestbook/blob/main/internal/templates/img/guestbook.png)
 
 ## Get started
 
