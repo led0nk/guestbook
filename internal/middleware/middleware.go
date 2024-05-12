@@ -25,7 +25,7 @@ func Auth(t db.TokenStore, logger *slog.Logger) func(h http.Handler) http.Handle
 			if err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
-				logger.ErrorContext(ctx, "could not find cookie", err)
+				logger.ErrorContext(ctx, "could not find cookie", "error", err)
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
@@ -34,7 +34,7 @@ func Auth(t db.TokenStore, logger *slog.Logger) func(h http.Handler) http.Handle
 			if !isValid {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
-				logger.ErrorContext(ctx, "could not validate token", err)
+				logger.ErrorContext(ctx, "could not validate token", "error", err)
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
@@ -43,7 +43,7 @@ func Auth(t db.TokenStore, logger *slog.Logger) func(h http.Handler) http.Handle
 			if err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
-				logger.ErrorContext(ctx, "could not refresh token", err)
+				logger.ErrorContext(ctx, "could not refresh token", "error", err)
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}
@@ -67,7 +67,7 @@ func AdminAuth(t db.TokenStore, u db.UserStore, logger *slog.Logger) func(h http
 			if err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
-				logger.ErrorContext(ctx, "could not find cookie", err)
+				logger.ErrorContext(ctx, "could not find cookie", "error", err)
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
@@ -76,7 +76,7 @@ func AdminAuth(t db.TokenStore, u db.UserStore, logger *slog.Logger) func(h http
 			if !isValid {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
-				logger.ErrorContext(ctx, "could not validate token", err)
+				logger.ErrorContext(ctx, "could not validate token", "error", err)
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
@@ -85,7 +85,7 @@ func AdminAuth(t db.TokenStore, u db.UserStore, logger *slog.Logger) func(h http
 			if err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
-				logger.ErrorContext(ctx, "could not refresh token", err)
+				logger.ErrorContext(ctx, "could not refresh token", "error", err)
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}

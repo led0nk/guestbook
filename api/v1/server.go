@@ -109,7 +109,7 @@ func (s *Server) ServeHTTP() {
 	}
 	err := srv.ListenAndServe()
 	if err != nil {
-		s.log.Error("error during listen and server", err)
+		s.log.Error("error during listen and server", "error", err)
 		os.Exit(1)
 	}
 }
@@ -128,7 +128,7 @@ func (s *Server) handlePage(w http.ResponseWriter, r *http.Request) {
 		metric.WithUnit("s"),
 	)
 	if err != nil {
-		s.log.ErrorContext(ctx, "metrics", err)
+		s.log.ErrorContext(ctx, "metrics", "error", err)
 	}
 	start := time.Now()
 
@@ -136,13 +136,13 @@ func (s *Server) handlePage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.ErrorContext(ctx, "failed to list entries", err)
+		s.log.ErrorContext(ctx, "failed to list entries", "error", err)
 	}
 	err = s.templates.TmplHome.Execute(w, &entries)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.ErrorContext(ctx, "failed to execute template", err)
+		s.log.ErrorContext(ctx, "failed to execute template", "error", err)
 		return
 	}
 	duration := time.Since(start)
@@ -160,14 +160,14 @@ func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.ErrorContext(ctx, "failed to list entries", err)
+		s.log.ErrorContext(ctx, "failed to list entries", "error", err)
 		return
 	}
 	err = s.templates.TmplSearch.Execute(w, entries)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.ErrorContext(ctx, "failed to execute template", err)
+		s.log.ErrorContext(ctx, "failed to execute template", "error", err)
 		return
 	}
 }
@@ -184,7 +184,7 @@ func (s *Server) loginHandler(w http.ResponseWriter, r *http.Request) {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.ErrorContext(ctx, "failed to execute template", err)
+		s.log.ErrorContext(ctx, "failed to execute template", "error", err)
 		return
 	}
 }
@@ -201,7 +201,7 @@ func (s *Server) signupHandler(w http.ResponseWriter, r *http.Request) {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.ErrorContext(ctx, "failed to execute template", err)
+		s.log.ErrorContext(ctx, "failed to execute template", "error", err)
 		return
 	}
 }
@@ -217,7 +217,7 @@ func (s *Server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.ErrorContext(ctx, "could not find cookie", err)
+		s.log.ErrorContext(ctx, "could not find cookie", "error", err)
 		return
 	}
 	tokenValue, err := s.tokenstore.GetTokenValue(ctx, session)
@@ -225,7 +225,7 @@ func (s *Server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.ErrorContext(ctx, "failed to get token value", err)
+		s.log.ErrorContext(ctx, "failed to get token value", "error", err)
 		return
 	}
 	user, err := s.userstore.GetUserByID(ctx, tokenValue)
@@ -233,7 +233,7 @@ func (s *Server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.ErrorContext(ctx, "failed to get user", err)
+		s.log.ErrorContext(ctx, "failed to get user", "error", err)
 		return
 	}
 	user.Entry, err = s.bookstore.GetEntryByID(ctx, tokenValue)
@@ -241,7 +241,7 @@ func (s *Server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.ErrorContext(ctx, "failed to get entry", err)
+		s.log.ErrorContext(ctx, "failed to get entry", "error", err)
 		return
 	}
 
@@ -250,7 +250,7 @@ func (s *Server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.ErrorContext(ctx, "failed to execute template", err)
+		s.log.ErrorContext(ctx, "failed to execute template", "error", err)
 		return
 	}
 }
@@ -266,7 +266,7 @@ func (s *Server) createHandler(w http.ResponseWriter, r *http.Request) {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.ErrorContext(ctx, "failed to execute template", err)
+		s.log.ErrorContext(ctx, "failed to execute template", "error", err)
 		return
 	}
 }
@@ -282,7 +282,7 @@ func (s *Server) verifyHandler(w http.ResponseWriter, r *http.Request) {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.ErrorContext(ctx, "failed to execute template", err)
+		s.log.ErrorContext(ctx, "failed to execute template", "error", err)
 		return
 	}
 }
@@ -298,7 +298,7 @@ func (s *Server) adminHandler(w http.ResponseWriter, r *http.Request) {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadRequest)
-		s.log.ErrorContext(ctx, "failed to list user", err)
+		s.log.ErrorContext(ctx, "failed to list user", "error", err)
 		return
 	}
 	err = s.templates.TmplAdmin.Execute(w, &users)
@@ -306,7 +306,7 @@ func (s *Server) adminHandler(w http.ResponseWriter, r *http.Request) {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.ErrorContext(ctx, "failed to execute template", err)
+		s.log.ErrorContext(ctx, "failed to execute template", "error", err)
 		return
 	}
 }
@@ -322,7 +322,7 @@ func (s *Server) forgotHandler(w http.ResponseWriter, r *http.Request) {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		w.WriteHeader(http.StatusBadGateway)
-		s.log.ErrorContext(ctx, "failed to execute template", err)
+		s.log.ErrorContext(ctx, "failed to execute template", "error", err)
 		return
 	}
 }
@@ -337,28 +337,28 @@ func (s *Server) createEntry(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.ErrorContext(ctx, "failed to parse form", err)
+		s.log.ErrorContext(ctx, "failed to parse form", "error", err)
 		return
 	}
 	session, err := r.Cookie("session")
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.ErrorContext(ctx, "failed to find cookie", err)
+		s.log.ErrorContext(ctx, "failed to find cookie", "error", err)
 		return
 	}
 	userID, err := s.tokenstore.GetTokenValue(ctx, session)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.ErrorContext(ctx, "failed to get token value", err)
+		s.log.ErrorContext(ctx, "failed to get token value", "error", err)
 		return
 	}
 	user, err := s.userstore.GetUserByID(ctx, userID)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.ErrorContext(ctx, "failed to get user", err)
+		s.log.ErrorContext(ctx, "failed to get user", "error", err)
 		return
 	}
 	newEntry := model.GuestbookEntry{Name: user.Name, Message: html.EscapeString(r.FormValue("message")), UserID: user.ID}
@@ -367,7 +367,7 @@ func (s *Server) createEntry(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.ErrorContext(ctx, "failed to create entry", err)
+		s.log.ErrorContext(ctx, "failed to create entry", "error", err)
 		return
 	}
 	http.Redirect(w, r, "/user/dashboard", http.StatusFound)
@@ -383,21 +383,21 @@ func (s *Server) changeUserData(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.ErrorContext(ctx, "failed to parse uuid", err)
+		s.log.ErrorContext(ctx, "failed to parse uuid", "error", err)
 		return
 	}
 	user, err := s.userstore.GetUserByID(ctx, userID)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.ErrorContext(ctx, "failed to get user", err)
+		s.log.ErrorContext(ctx, "failed to get user", "error", err)
 		return
 	}
 	err = s.templates.TmplDashboardUser.ExecuteTemplate(w, "user-update", user)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.ErrorContext(ctx, "failed to execute template", err)
+		s.log.ErrorContext(ctx, "failed to execute template", "error", err)
 		return
 	}
 }
