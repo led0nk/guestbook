@@ -67,6 +67,7 @@ func (s *Server) ServeHTTP() {
 			DefaultLevel:     slog.LevelInfo,
 			ClientErrorLevel: slog.LevelWarn,
 			ServerErrorLevel: slog.LevelError,
+			WithUserAgent:    true,
 		},
 	)
 	traceAttrmw := middleware.SlogAddTraceAttributes()
