@@ -1,12 +1,11 @@
 package middleware
 
 import (
-	"errors"
+	"log/slog"
 	"net/http"
-	"strconv"
 
 	db "github.com/led0nk/guestbook/internal/database"
-	"github.com/rs/zerolog"
+	sloghttp "github.com/samber/slog-http"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -14,31 +13,7 @@ import (
 
 var tracer = otel.GetTracerProvider().Tracer("github.com/led0nk/guestbook/internal/middleware")
 
-type ResponseRecorder struct {
-	http.ResponseWriter
-	StatusCode int
-}
-
-func (rec *ResponseRecorder) WriteHeader(statusCode int) {
-	rec.StatusCode = statusCode
-	rec.ResponseWriter.WriteHeader(statusCode)
-}
-
-// logging middleware
-func Logger(logger zerolog.Logger, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rec := &ResponseRecorder{
-			ResponseWriter: w,
-			StatusCode:     http.StatusOK,
-		}
-
-		logger.Info().Str(r.Method, r.URL.String()).Msg(strconv.Itoa(rec.StatusCode))
-		next.ServeHTTP(rec, r)
-	})
-}
-
-// authentication middleware, check for session values -> redirect
-func Auth(t db.TokenStore, logger zerolog.Logger) func(h http.Handler) http.Handler {
+func Auth(t db.TokenStore, logger *slog.Logger) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var span trace.Span
@@ -50,7 +25,7 @@ func Auth(t db.TokenStore, logger zerolog.Logger) func(h http.Handler) http.Hand
 			if err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
-				logger.Err(errors.New("cookie")).Msg(err.Error())
+				logger.ErrorContext(ctx, "could not find cookie", err)
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
@@ -59,7 +34,7 @@ func Auth(t db.TokenStore, logger zerolog.Logger) func(h http.Handler) http.Hand
 			if !isValid {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
-				logger.Err(errors.New("token")).Msg(err.Error())
+				logger.ErrorContext(ctx, "could not validate token", err)
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
@@ -68,19 +43,19 @@ func Auth(t db.TokenStore, logger zerolog.Logger) func(h http.Handler) http.Hand
 			if err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
-				logger.Err(errors.New("token")).Msg(err.Error())
+				logger.ErrorContext(ctx, "could not refresh token", err)
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}
 
 			http.SetCookie(w, cookie)
-			logger.Info().Str("auth-mw", "done").Msg("")
+			logger.Info("authentication middleware", "status", "done")
 			h.ServeHTTP(w, r)
 		})
 	}
 }
 
-func AdminAuth(t db.TokenStore, u db.UserStore, logger zerolog.Logger) func(h http.Handler) http.Handler {
+func AdminAuth(t db.TokenStore, u db.UserStore, logger *slog.Logger) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var span trace.Span
@@ -92,7 +67,7 @@ func AdminAuth(t db.TokenStore, u db.UserStore, logger zerolog.Logger) func(h ht
 			if err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
-				logger.Err(errors.New("cookie")).Msg(err.Error())
+				logger.ErrorContext(ctx, "could not find cookie", err)
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
@@ -101,7 +76,7 @@ func AdminAuth(t db.TokenStore, u db.UserStore, logger zerolog.Logger) func(h ht
 			if !isValid {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
-				logger.Err(errors.New("token")).Msg(err.Error())
+				logger.ErrorContext(ctx, "could not validate token", err)
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
@@ -110,15 +85,29 @@ func AdminAuth(t db.TokenStore, u db.UserStore, logger zerolog.Logger) func(h ht
 			if err != nil {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
-				logger.Err(errors.New("token")).Msg(err.Error())
+				logger.ErrorContext(ctx, "could not refresh token", err)
 				http.Redirect(w, r, "/", http.StatusFound)
 				return
 			}
 
 			http.SetCookie(w, cookie)
 
-			logger.Info().Str("admin-mw", "done").Msg("")
+			logger.Info("admin middleware", "status", "done")
 
+			h.ServeHTTP(w, r)
+		})
+	}
+}
+
+func SlogAddTraceAttributes() func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			sloghttp.AddCustomAttributes(r,
+				slog.String("trace-id", trace.SpanFromContext(r.Context()).SpanContext().TraceID().String()),
+			)
+			sloghttp.AddCustomAttributes(r,
+				slog.String("span-id", trace.SpanFromContext(r.Context()).SpanContext().SpanID().String()),
+			)
 			h.ServeHTTP(w, r)
 		})
 	}
