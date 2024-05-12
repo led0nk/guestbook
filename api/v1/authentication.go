@@ -26,14 +26,14 @@ func (s *Server) passwordReset(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("uuid")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to parse uuid", err)
 		return
 	}
 	user, err := s.userstore.GetUserByID(ctx, userID)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to get user", err)
 		return
 	}
 	newPW := utils.RandomString(8)
@@ -42,14 +42,14 @@ func (s *Server) passwordReset(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("password")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to gernerate hashed password", err)
 		return
 	}
 	err = s.mailer.SendPWMail(user, s.templates)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("mailer")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to send password-mail", err)
 		return
 	}
 	user.Password = hashedpassword
@@ -57,7 +57,7 @@ func (s *Server) passwordReset(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to update user", err)
 		return
 	}
 }
@@ -74,7 +74,7 @@ func (s *Server) loginAuth(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to get user", err)
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
@@ -82,8 +82,7 @@ func (s *Server) loginAuth(w http.ResponseWriter, r *http.Request) {
 	if err := bcrypt.CompareHashAndPassword(user.Password, []byte(r.FormValue("password"))); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("hashing")).Msg(err.Error())
-		//w.WriteHeader(http.StatusUnauthorized)
+		s.log.ErrorContext(ctx, "failed to compare passwords", err)
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
@@ -91,7 +90,7 @@ func (s *Server) loginAuth(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("token")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to create token", err)
 		return
 	}
 
@@ -115,11 +114,12 @@ func (s *Server) logoutAuth(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, http.ErrNoCookie):
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
+			s.log.ErrorContext(ctx, "failed to get cookie", err)
 			http.Error(w, "cookie not found", http.StatusBadRequest)
 		default:
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
-			s.log.Err(errors.New("server")).Msg(err.Error())
+			s.log.ErrorContext(ctx, "error while getting cookie", err)
 			http.Error(w, "server error", http.StatusInternalServerError)
 		}
 	}
@@ -127,14 +127,14 @@ func (s *Server) logoutAuth(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("token")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to get token value", err)
 		return
 	}
 	err = s.tokenstore.DeleteToken(ctx, userID)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("token")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to delete token", err)
 		return
 	}
 	cookie.MaxAge = -1
@@ -153,14 +153,14 @@ func (s *Server) signupAuth(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("request")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to parse form", err)
 		return
 	}
 	err = jsondb.ValidateUserInput(r.Form)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to validate user input", err)
 		http.Redirect(w, r, "/signup", http.StatusFound)
 		return
 	}
@@ -169,7 +169,7 @@ func (s *Server) signupAuth(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("password")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to generate password", err)
 		return
 	}
 	newUser := model.User{
@@ -185,7 +185,7 @@ func (s *Server) signupAuth(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to create user", err)
 		http.Redirect(w, r, "/signup", http.StatusFound)
 		w.WriteHeader(http.StatusUnauthorized)
 	}
@@ -194,7 +194,7 @@ func (s *Server) signupAuth(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("mailer")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to send verification mail", err)
 		return
 	}
 	http.Redirect(w, r, "/login", http.StatusFound)
@@ -210,33 +210,35 @@ func (s *Server) verifyAuth(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("request")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to parse form", err)
 		return
 	}
 	session, err := r.Cookie("session")
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("cookie")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to find cookie", err)
 		return
 	}
 	userID, err := s.tokenstore.GetTokenValue(ctx, session)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("token")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to get token value", err)
 		return
 	}
 	ok, err := s.userstore.CodeValidation(ctx, userID, r.FormValue("code"))
 	if !ok {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		http.Redirect(w, r, "/user/verify", http.StatusFound)
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "verification code is not matching", err)
 		return
 	}
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to validate verification code", err)
 		return
 	}
 	http.Redirect(w, r, "/user/dashboard", http.StatusFound)
@@ -252,19 +254,18 @@ func (s *Server) deleteUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("uuid")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to parse uuid", err)
 		return
 	}
 	err = s.userstore.DeleteUser(ctx, ID)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to delete user", err)
 		return
 	}
 }
 
-// TODO: User Template with input Form for editing
 func (s *Server) updateUser(w http.ResponseWriter, r *http.Request) {
 	var span trace.Span
 	ctx := r.Context()
@@ -275,21 +276,21 @@ func (s *Server) updateUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("uuid")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to parse uuid", err)
 		return
 	}
 	user, err := s.userstore.GetUserByID(ctx, userID)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to get user", err)
 		return
 	}
 	err = s.templates.TmplAdminUser.ExecuteTemplate(w, "user-update", &user)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("template")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to execute template", err)
 		return
 	}
 }
@@ -305,7 +306,7 @@ func (s *Server) saveUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("request")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to parse form", err)
 		return
 	}
 
@@ -313,14 +314,14 @@ func (s *Server) saveUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("uuid")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to parse uuid", err)
 		return
 	}
 	user, err := s.userstore.GetUserByID(ctx, userID)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to get user", err)
 		return
 	}
 
@@ -338,14 +339,14 @@ func (s *Server) saveUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to update user", err)
 		return
 	}
 	err = s.templates.TmplAdminUser.ExecuteTemplate(w, "user", &updatedUser)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("template")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to execute template", err)
 		return
 	}
 }
@@ -360,14 +361,14 @@ func (s *Server) resendVer(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("uuid")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to parse uuid", err)
 		return
 	}
 	user, err := s.userstore.GetUserByID(ctx, userID)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to get user", err)
 		return
 	}
 	user.VerificationCode = utils.RandomString(6)
@@ -376,21 +377,21 @@ func (s *Server) resendVer(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("mailer")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to send verification mail", err)
 		return
 	}
 	err = s.userstore.UpdateUser(ctx, user)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to update user", err)
 		return
 	}
 	err = s.templates.TmplAdminUser.ExecuteTemplate(w, "user", &user)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("template")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to execute template", err)
 		return
 	}
 }
@@ -405,7 +406,7 @@ func (s *Server) forgotPW(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to get user", err)
 		return
 	}
 	newPW := utils.RandomString(8)
@@ -415,7 +416,7 @@ func (s *Server) forgotPW(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("mailer")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to generate password", err)
 		return
 	}
 	user.Password = hashedpassword
@@ -423,7 +424,7 @@ func (s *Server) forgotPW(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to update user", err)
 		return
 	}
 	http.Redirect(w, r, "/login", http.StatusFound)
@@ -440,14 +441,14 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to get entry", err)
 		return
 	}
 	err = s.templates.TmplSearchResult.ExecuteTemplate(w, "result", &entry)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("template")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to execute template", err)
 		return
 	}
 }
@@ -462,14 +463,14 @@ func (s *Server) submitUserData(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("uuid")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to parse uuid", err)
 		return
 	}
 	user, err := s.userstore.GetUserByID(ctx, userID)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to get user", err)
 		return
 	}
 	updatedUser := model.User{
@@ -486,14 +487,14 @@ func (s *Server) submitUserData(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("user")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to update user", err)
 		return
 	}
 	err = s.templates.TmplDashboardUser.ExecuteTemplate(w, "user", &updatedUser)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		s.log.Err(errors.New("template")).Msg(err.Error())
+		s.log.ErrorContext(ctx, "failed to execute template", err)
 		return
 	}
 }
