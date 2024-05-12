@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gorilla/mux"
 	db "github.com/led0nk/guestbook/internal/database"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel"
@@ -26,23 +25,21 @@ func (rec *ResponseRecorder) WriteHeader(statusCode int) {
 }
 
 // logging middleware
-func Logger(logger zerolog.Logger) mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			rec := &ResponseRecorder{
-				ResponseWriter: w,
-				StatusCode:     http.StatusOK,
-			}
+func Logger(logger zerolog.Logger, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rec := &ResponseRecorder{
+			ResponseWriter: w,
+			StatusCode:     http.StatusOK,
+		}
 
-			logger.Info().Str(r.Method, r.URL.String()).Msg(strconv.Itoa(rec.StatusCode))
-			next.ServeHTTP(rec, r)
-		})
-	}
+		logger.Info().Str(r.Method, r.URL.String()).Msg(strconv.Itoa(rec.StatusCode))
+		next.ServeHTTP(rec, r)
+	})
 }
 
 // authentication middleware, check for session values -> redirect
-func Auth(t db.TokenStore, logger zerolog.Logger) mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
+func Auth(t db.TokenStore, logger zerolog.Logger) func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var span trace.Span
 			ctx := r.Context()
@@ -78,13 +75,13 @@ func Auth(t db.TokenStore, logger zerolog.Logger) mux.MiddlewareFunc {
 
 			http.SetCookie(w, cookie)
 			logger.Info().Str("auth-mw", "done").Msg("")
-			next.ServeHTTP(w, r)
+			h.ServeHTTP(w, r)
 		})
 	}
 }
 
-func AdminAuth(t db.TokenStore, u db.UserStore, logger zerolog.Logger) mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
+func AdminAuth(t db.TokenStore, u db.UserStore, logger zerolog.Logger) func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var span trace.Span
 			ctx := r.Context()
@@ -122,7 +119,7 @@ func AdminAuth(t db.TokenStore, u db.UserStore, logger zerolog.Logger) mux.Middl
 
 			logger.Info().Str("admin-mw", "done").Msg("")
 
-			next.ServeHTTP(w, r)
+			h.ServeHTTP(w, r)
 		})
 	}
 }
